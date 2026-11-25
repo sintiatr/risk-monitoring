@@ -1,0 +1,2486 @@
+<!DOCTYPE html>
+<html lang="id">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Monitoring Pengendalian Risiko - ITJEN KESDM</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Chart.js CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- Font Awesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <!-- Dataset Bersih Otomatis dari Google Sheets -->
+  <script src="data_clean.js"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap');
+
+    body {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+    }
+
+    .custom-scrollbar::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+
+    .custom-scrollbar::-webkit-scrollbar-track {
+      background: #f1f5f9;
+    }
+
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 9999px;
+    }
+
+    .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+      background: #94a3b8;
+    }
+
+    @media print {
+      .no-print {
+        display: none !important;
+      }
+
+      body {
+        background: white !important;
+      }
+    }
+
+    /* ===== Komponen dashboard (palet selaras logo ESDM: kuning #FFF500 & hitam) ===== */
+    :root {
+      --ink: #0B0B0C;
+      --brand: #FFF500;
+      --brand-deep: #FFC800;
+      --line: #ECE9DF;
+    }
+
+    .kpi-card {
+      position: relative;
+      overflow: hidden;
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 1rem;
+      padding: 1.1rem 1rem 0.95rem;
+      box-shadow: 0 1px 2px rgba(11, 11, 12, .04), 0 6px 18px -8px rgba(11, 11, 12, .10);
+      transition: transform .2s ease, box-shadow .2s ease;
+    }
+
+    .kpi-card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 10px 26px -10px rgba(11, 11, 12, .22);
+    }
+
+    .kpi-accent {
+      position: absolute;
+      left: 0;
+      right: 0;
+      top: 0;
+      height: 4px;
+    }
+
+    .kpi-label {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: .06em;
+      text-transform: uppercase;
+      color: #64748b;
+    }
+
+    .kpi-value {
+      font-size: 1.9rem;
+      line-height: 1.15;
+      font-weight: 800;
+      color: var(--ink);
+      margin-top: .15rem;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .kpi-sub {
+      font-size: 11px;
+      color: #64748b;
+      margin-top: .35rem;
+    }
+
+    .kpi-chip {
+      font-size: 11px;
+      font-weight: 800;
+      padding: 2px 8px;
+      border-radius: 9999px;
+    }
+
+    .kpi-icon {
+      width: 2.6rem;
+      height: 2.6rem;
+      border-radius: .85rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.05rem;
+      flex-shrink: 0;
+    }
+
+    .kpi-bar {
+      height: 6px;
+      border-radius: 9999px;
+      background: #F1F0E8;
+      margin-top: .55rem;
+      overflow: hidden;
+    }
+
+    .kpi-bar>div {
+      height: 100%;
+      border-radius: 9999px;
+      transition: width .6s ease;
+    }
+
+    .chart-card {
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 1.1rem;
+      padding: 1.1rem 1.15rem 1.15rem;
+      box-shadow: 0 1px 2px rgba(11, 11, 12, .04), 0 8px 24px -12px rgba(11, 11, 12, .12);
+      border-top: 3px solid var(--brand-deep);
+    }
+
+    .chart-head {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: .75rem;
+      margin-bottom: .6rem;
+    }
+
+    .chart-title {
+      display: flex;
+      align-items: center;
+      gap: .5rem;
+      font-size: .9rem;
+      font-weight: 800;
+      color: var(--ink);
+    }
+
+    .chart-dot {
+      width: .6rem;
+      height: .6rem;
+      border-radius: 9999px;
+      display: inline-block;
+    }
+
+    .chart-sub {
+      font-size: 11px;
+      color: #64748b;
+      margin-top: .2rem;
+      line-height: 1.45;
+    }
+
+    .chart-dl {
+      width: 2rem;
+      height: 2rem;
+      flex-shrink: 0;
+      border-radius: .6rem;
+      font-size: .75rem;
+      color: #475569;
+      background: #F7F6F0;
+      border: 1px solid var(--line);
+      transition: all .15s ease;
+    }
+
+    .chart-dl:hover {
+      background: var(--brand);
+      border-color: var(--brand-deep);
+      color: var(--ink);
+    }
+
+    /* Legenda: satu baris chip di atas grafik, tidak menimpa area plot */
+    .legend-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: .4rem;
+      margin: .1rem 0 .7rem;
+    }
+
+    .legend-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: .4rem;
+      font-size: 11px;
+      font-weight: 600;
+      color: #334155;
+      padding: .28rem .65rem;
+      border-radius: 9999px;
+      background: #F7F6F0;
+      border: 1px solid var(--line);
+      cursor: pointer;
+      transition: all .15s ease;
+      user-select: none;
+    }
+
+    .legend-chip b {
+      font-weight: 800;
+      color: var(--ink);
+      font-variant-numeric: tabular-nums;
+    }
+
+    .legend-chip:hover {
+      border-color: #CFCBB8;
+    }
+
+    .legend-chip.is-off {
+      opacity: .45;
+    }
+
+    .legend-chip.is-off span:nth-child(2) {
+      text-decoration: line-through;
+    }
+
+    .legend-chip.is-static {
+      cursor: default;
+    }
+
+    .legend-dot {
+      width: .55rem;
+      height: .55rem;
+      border-radius: 9999px;
+      flex-shrink: 0;
+    }
+
+    /* Legenda donut: daftar di bawah grafik, nilai rata kanan */
+    .legend-list {
+      margin-top: .9rem;
+      display: flex;
+      flex-direction: column;
+      gap: .35rem;
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: .6rem;
+      padding: .45rem .65rem;
+      border-radius: .7rem;
+      background: #FBFAF5;
+      border: 1px solid var(--line);
+      font-size: 12px;
+      cursor: pointer;
+      transition: all .15s ease;
+    }
+
+    .legend-item:hover {
+      border-color: #CFCBB8;
+      background: #fff;
+    }
+
+    .legend-item .name {
+      flex: 1;
+      font-weight: 600;
+      color: #334155;
+    }
+
+    .legend-item .num {
+      font-weight: 800;
+      color: var(--ink);
+      font-variant-numeric: tabular-nums;
+    }
+
+    .legend-item .pct {
+      width: 3.4rem;
+      text-align: right;
+      color: #64748b;
+      font-weight: 600;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .legend-item.is-off {
+      opacity: .45;
+    }
+
+    .legend-item.is-off .name {
+      text-decoration: line-through;
+    }
+
+    .hl-pill {
+      display: flex;
+      align-items: center;
+      gap: .6rem;
+      flex: 1;
+      padding: .6rem .85rem;
+      border-radius: .85rem;
+      border: 1px solid var(--line);
+      background: #fff;
+      color: #334155;
+      line-height: 1.5;
+    }
+
+    .hl-pill .hl-ico {
+      width: 1.8rem;
+      height: 1.8rem;
+      border-radius: .6rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      font-size: .8rem;
+    }
+
+    .hl-pill b {
+      color: var(--ink);
+    }
+  </style>
+</head>
+
+<body class="bg-[#FAFAF7] text-slate-800 min-h-screen flex flex-col selection:bg-[#FFF500] selection:text-slate-950">
+
+  <!-- Off-Canvas Sidebar Menu (Tombol Garis Tiga) -->
+  <div id="sidebarBackdrop" onclick="toggleSidebar(false)"
+    class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden transition-opacity duration-300 opacity-0 no-print">
+  </div>
+  <aside id="sidebarDrawer"
+    class="fixed top-0 left-0 bottom-0 w-72 sm:w-80 bg-slate-900 text-white z-50 shadow-2xl flex flex-col transform -translate-x-full transition-transform duration-300 ease-in-out border-r border-slate-800 no-print">
+
+    <!-- Sidebar Header -->
+    <div
+      class="p-4 sm:p-5 border-b border-slate-800 border-t-2 border-t-[#FFF500] flex items-center justify-between bg-[#0B0B0C]">
+      <div class="flex items-center gap-3">
+        <img src="images/logo-esdm.png"
+          onerror="if(!this.dataset.t1){this.dataset.t1='1';this.src='../images/logo-esdm.png';}else if(!this.dataset.t2){this.dataset.t2='1';this.src='images/logo-esdm.jpg';}else if(!this.dataset.t3){this.dataset.t3='1';this.src='../images/logo-esdm.jpg';}"
+          alt="Logo Kementerian ESDM" class="w-10 h-10 object-contain">
+        <div>
+          <h3 class="font-bold text-sm text-white flex items-center gap-1.5">
+            Menu Navigasi
+            <span class="w-1.5 h-1.5 rounded-full bg-[#FFF500]"></span>
+          </h3>
+          <p class="text-[11px] text-slate-400">Monitoring Risiko ITJEN</p>
+        </div>
+      </div>
+      <button onclick="toggleSidebar(false)" aria-label="Tutup Menu"
+        class="w-8 h-8 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white flex items-center justify-center transition">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+    </div>
+
+    <!-- Navigation Menu Items -->
+    <div class="flex-1 overflow-y-auto p-3.5 space-y-1.5 custom-scrollbar text-xs sm:text-sm">
+      <p class="text-[10px] font-bold uppercase tracking-wider text-slate-500 px-3 py-1">Tampilan Halaman</p>
+
+      <button onclick="navSwitchView('view-dashboard')" id="navBtnDashboard"
+        class="sidebar-nav-btn w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl font-medium transition text-[#FFF500] bg-slate-800/90 border border-[#FFF500]/60 shadow-sm shadow-[#FFF500]/10 text-left font-semibold">
+        <i class="fa-solid fa-chart-pie w-5 text-center text-base"></i>
+        <span>Dashboard & Grafik</span>
+      </button>
+
+      <button onclick="navSwitchView('view-matriks')" id="navBtnMatriks"
+        class="sidebar-nav-btn w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl font-medium text-slate-300 hover:bg-slate-800/80 hover:text-white transition text-left">
+        <i class="fa-solid fa-table-cells w-5 text-center text-base"></i>
+        <span>Matriks Risiko</span>
+      </button>
+
+      <button onclick="navSwitchView('view-register')" id="navBtnRegister"
+        class="sidebar-nav-btn w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl font-medium text-slate-300 hover:bg-slate-800/80 hover:text-white transition text-left">
+        <i class="fa-solid fa-table-list w-5 text-center text-base"></i>
+        <span>Tabel Risiko</span>
+      </button>
+
+      <button onclick="navSwitchView('view-apps-script')" id="navBtnAppsScript"
+        class="sidebar-nav-btn w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl font-medium text-slate-300 hover:bg-slate-800/80 hover:text-white transition text-left">
+        <i class="fa-solid fa-code w-5 text-center text-base"></i>
+        <span>Apps Script</span>
+      </button>
+
+      <hr class="border-slate-800 my-3">
+
+      <p class="text-[10px] font-bold uppercase tracking-wider text-slate-500 px-3 py-1">Pengaturan Sumber Data</p>
+
+      <button onclick="openChangeUrlFromNav()"
+        class="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl font-medium text-[#FFF500] hover:bg-yellow-950/40 hover:text-yellow-200 border border-transparent hover:border-yellow-700/40 transition text-left">
+        <i class="fa-solid fa-link w-5 text-center text-base text-[#FFF500]"></i>
+        <span>Ubah Link Data</span>
+      </button>
+
+      <a id="navBtnGoogleSheets"
+        href="https://docs.google.com/spreadsheets/d/1IALIKNQBasKoP_-x88Zhc-McVKSTdyt3/edit?gid=40730807#gid=40730807"
+        target="_blank" onclick="toggleSidebar(false)"
+        class="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl font-medium text-emerald-300 hover:bg-emerald-950/40 hover:text-emerald-200 border border-transparent hover:border-emerald-700/40 transition text-left">
+        <i class="fa-solid fa-arrow-up-right-from-square w-5 text-center text-base text-emerald-400"></i>
+        <span>Buka Sheet</span>
+      </a>
+    </div>
+
+    <!-- Sidebar Footer -->
+    <div class="p-4 border-t border-slate-800 bg-slate-950/60 text-[11px] text-slate-400 flex flex-col gap-1.5">
+      <div class="flex items-center justify-between">
+        <span class="text-slate-500">Koneksi Data:</span>
+        <span id="sidebarConnStatus" class="text-emerald-400 font-semibold flex items-center gap-1.5">
+          <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span> Google Sheets Live
+        </span>
+      </div>
+      <p class="text-[10px] text-slate-500 truncate" id="sidebarUrlPreview">Link aktif terhubung</p>
+    </div>
+  </aside>
+
+  <!-- Header -->
+  <header
+    class="bg-gradient-to-r from-[#0B0B0C] via-[#1A1A1D] to-[#0B0B0C] text-white shadow-lg sticky top-0 z-40 border-b-2 border-[#FFF500]">
+    <div
+      class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3.5 flex flex-col sm:flex-row items-center justify-between gap-3">
+      <div class="flex items-center space-x-3.5">
+        <!-- Tombol Garis Tiga (Hamburger Menu) -->
+        <button onclick="toggleSidebar(true)" aria-label="Buka Menu Navigasi"
+          class="w-10 h-10 rounded-xl bg-white/10 hover:bg-white/20 text-slate-200 hover:text-white flex items-center justify-center border border-slate-700 shadow-sm transition no-print focus:outline-none focus:ring-2 focus:ring-[#FFF500]">
+          <i class="fa-solid fa-bars text-lg"></i>
+        </button>
+
+        <img src="images/logo-esdm.png"
+          onerror="if(!this.dataset.t1){this.dataset.t1='1';this.src='../images/logo-esdm.png';}else if(!this.dataset.t2){this.dataset.t2='1';this.src='images/logo-esdm.jpg';}else if(!this.dataset.t3){this.dataset.t3='1';this.src='../images/logo-esdm.jpg';}"
+          alt="Logo Kementerian ESDM" class="w-11 h-11 object-contain">
+        <div>
+          <h1 class="text-lg sm:text-xl font-bold tracking-tight text-white flex items-center gap-2">
+            Monitoring Pengendalian Risiko
+            <span class="text-xs bg-[#FFF500] text-slate-950 font-bold px-2.5 py-0.5 rounded-full shadow-sm">TW
+              III 2026</span>
+          </h1>
+          <p class="text-xs text-slate-300">Inspektorat Jenderal Kementerian ESDM</p>
+        </div>
+      </div>
+
+      <!-- Action button di header -->
+      <div class="flex flex-wrap items-center gap-2 no-print">
+        <button onclick="window.print()"
+          class="text-xs bg-white/10 hover:bg-white/20 text-slate-200 hover:text-[#FFF500] px-3.5 py-2 rounded-lg border border-slate-700 hover:border-[#FFF500]/60 transition flex items-center gap-1.5 shadow-sm font-medium">
+          <i class="fa-solid fa-print"></i>
+          <span>Cetak PDF</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Real-Time Sync Status Sub-Header Bar -->
+  <div
+    class="bg-[#141416] border-b border-slate-800/80 px-4 sm:px-6 lg:px-8 py-2 text-xs text-slate-300 no-print shadow-inner">
+    <div class="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2">
+      <div class="flex items-center gap-2.5">
+        <span id="liveStatusBadge"
+          class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+          <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span> Live Sinkronisasi Aktif
+        </span>
+        <span id="lastUpdatedText" class="text-slate-400 text-[11px]">Terakhir diperbarui: memuat data...</span>
+      </div>
+      <div class="flex items-center gap-4">
+        <label class="flex items-center gap-1.5 cursor-pointer text-slate-300 hover:text-white select-none transition">
+          <input type="checkbox" id="autoSyncToggle" checked onchange="toggleAutoSync(this.checked)"
+            class="rounded text-amber-400 focus:ring-0 w-3.5 h-3.5 accent-[#FFF500] cursor-pointer">
+          <span class="text-[11px]">Auto-Sync Real-Time (60 dtk)</span>
+        </label>
+        <button onclick="syncLiveNow()" id="btnSyncLive"
+          class="hover:text-white transition flex items-center gap-1 text-[11px] text-[#FFF500] hover:underline font-semibold">
+          <i class="fa-solid fa-rotate text-[10px]"></i> Sinkronkan Sekarang
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main Content -->
+  <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+
+    <!-- VIEW 0: DASHBOARD RINGKASAN & GRAFIK -->
+    <div id="view-dashboard" class="view-content space-y-5">
+
+      <!-- KPI: 4 angka utama, tiap kartu satu ukuran berbeda (tanpa duplikasi) -->
+      <section class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+        <!-- Kode risiko -->
+        <div class="kpi-card">
+          <div class="kpi-accent" style="background:linear-gradient(90deg,#FFF500,#FFB800)"></div>
+          <div class="flex items-start justify-between gap-3">
+            <div class="min-w-0">
+              <p class="kpi-label">Kode Risiko</p>
+              <h3 id="kpiTotalKode" class="kpi-value">-</h3>
+              <p class="kpi-sub">Risiko teridentifikasi</p>
+            </div>
+            <div class="kpi-icon" style="background:#FFF9C2;color:#8A6D00"><i
+                class="fa-solid fa-triangle-exclamation"></i></div>
+          </div>
+        </div>
+
+        <!-- Titik mitigasi -->
+        <div class="kpi-card">
+          <div class="kpi-accent" style="background:linear-gradient(90deg,#38BDF8,#2563EB)"></div>
+          <div class="flex items-start justify-between gap-3">
+            <div class="min-w-0">
+              <p class="kpi-label">Titik Mitigasi</p>
+              <h3 id="kpiTotalTitik" class="kpi-value">-</h3>
+              <p class="kpi-sub">Pasangan risiko × PIC</p>
+            </div>
+            <div class="kpi-icon" style="background:#E0F2FE;color:#0369A1"><i class="fa-solid fa-bullseye"></i></div>
+          </div>
+        </div>
+
+        <!-- Pengendalian terlaksana -->
+        <div class="kpi-card">
+          <div class="kpi-accent" style="background:linear-gradient(90deg,#34D399,#059669)"></div>
+          <div class="flex items-start justify-between gap-3">
+            <div class="min-w-0 flex-1">
+              <p class="kpi-label">Pengendalian Lengkap</p>
+              <div class="flex items-baseline gap-2">
+                <h3 id="kpiSudah" class="kpi-value">-</h3>
+                <span id="kpiSudahPct" class="kpi-chip" style="background:#D1FAE5;color:#047857">0%</span>
+              </div>
+              <div class="kpi-bar">
+                <div id="kpiSudahBar" style="width:0%;background:linear-gradient(90deg,#34D399,#059669)"></div>
+              </div>
+              <p id="kpiRencana" class="kpi-sub">-</p>
+              <p id="kpiRencana2" class="kpi-sub" style="margin-top:.15rem">-</p>
+            </div>
+            <div class="kpi-icon" style="background:#D1FAE5;color:#047857"><i class="fa-solid fa-circle-check"></i>
+            </div>
+          </div>
+        </div>
+
+        <!-- Efektivitas dinilai -->
+        <div class="kpi-card">
+          <div class="kpi-accent" style="background:linear-gradient(90deg,#A78BFA,#7C3AED)"></div>
+          <div class="flex items-start justify-between gap-3">
+            <div class="min-w-0 flex-1">
+              <p class="kpi-label">Efektivitas Sudah Dinilai</p>
+              <div class="flex items-baseline gap-2">
+                <h3 id="kpiEfek" class="kpi-value">-</h3>
+                <span id="kpiEfekPct" class="kpi-chip" style="background:#EDE9FE;color:#6D28D9">0%</span>
+              </div>
+              <div class="kpi-bar">
+                <div id="kpiEfekBar" style="width:0%;background:linear-gradient(90deg,#A78BFA,#7C3AED)"></div>
+              </div>
+              <p id="kpiEfekSub" class="kpi-sub">-</p>
+            </div>
+            <div class="kpi-icon" style="background:#EDE9FE;color:#6D28D9"><i class="fa-solid fa-star-half-stroke"></i>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Sorotan otomatis (dihitung dari data, bukan teks tetap) -->
+      <section id="highlightStrip" class="flex flex-col lg:flex-row gap-2.5 text-xs"></section>
+
+      <!-- Grafik -->
+      <section class="grid grid-cols-1 lg:grid-cols-12 gap-5">
+
+        <!-- 1. Capaian per unit -->
+        <div class="chart-card lg:col-span-7">
+          <div class="chart-head">
+            <div>
+              <h3 class="chart-title"><span class="chart-dot" style="background:#1E3A8A"></span>Capaian per Unit Eselon
+                II</h3>
+              <p class="chart-sub">Status tiap titik mitigasi (lengkap = semua rencana tindak terealisasi). Angka di
+                ujung bar = persentase titik lengkap. Klik bar untuk rincian.</p>
+            </div>
+            <button onclick="downloadChart('unit','Capaian_per_Unit')" class="chart-dl" title="Unduh PNG"
+              aria-label="Unduh grafik capaian per unit">
+              <i class="fa-solid fa-download"></i>
+            </button>
+          </div>
+          <div id="legendUnit" class="legend-row"></div>
+          <div class="relative h-[370px]"><canvas id="chartUnit"></canvas></div>
+        </div>
+
+        <!-- 2. Efektivitas total -->
+        <div class="chart-card lg:col-span-5">
+          <div class="chart-head">
+            <div>
+              <h3 class="chart-title"><span class="chart-dot" style="background:#F59E0B"></span>Efektivitas Pengendalian
+              </h3>
+              <p class="chart-sub">Penilaian efektivitas per titik mitigasi.</p>
+            </div>
+            <button onclick="downloadChart('efek','Efektivitas_Pengendalian')" class="chart-dl" title="Unduh PNG"
+              aria-label="Unduh grafik efektivitas">
+              <i class="fa-solid fa-download"></i>
+            </button>
+          </div>
+          <div class="relative h-[220px] w-full max-w-[260px] mx-auto"><canvas id="chartEfek"></canvas></div>
+          <div id="legendEfek" class="legend-list"></div>
+        </div>
+
+        <!-- 3. Realisasi rencana tindak per PIC -->
+        <div class="chart-card lg:col-span-6">
+          <div class="chart-head">
+            <div>
+              <h3 class="chart-title"><span class="chart-dot" style="background:#1E3A8A"></span>Realisasi Rencana Tindak
+                per PIC</h3>
+              <p class="chart-sub">Persentase rencana tindak yang terealisasi. Angka di ujung bar = terealisasi/total.
+                Klik bar untuk rincian.</p>
+            </div>
+            <button onclick="downloadChart('rencana','Realisasi_Rencana_Tindak_per_PIC')" class="chart-dl"
+              title="Unduh PNG" aria-label="Unduh grafik realisasi rencana">
+              <i class="fa-solid fa-download"></i>
+            </button>
+          </div>
+          <div id="legendRencana" class="legend-row"></div>
+          <div class="relative h-[400px]"><canvas id="chartRencana"></canvas></div>
+        </div>
+
+        <!-- 4. Efektivitas per PIC -->
+        <div class="chart-card lg:col-span-6">
+          <div class="chart-head">
+            <div>
+              <h3 class="chart-title"><span class="chart-dot" style="background:#0284C7"></span>Efektivitas per PIC</h3>
+              <p class="chart-sub">Komposisi penilaian per PIC (100% = seluruh titik PIC). Angka di ujung bar = titik
+                sudah dinilai/total.</p>
+            </div>
+            <button onclick="downloadChart('efekPic','Efektivitas_per_PIC')" class="chart-dl" title="Unduh PNG"
+              aria-label="Unduh grafik efektivitas per PIC">
+              <i class="fa-solid fa-download"></i>
+            </button>
+          </div>
+          <div id="legendEfekPic" class="legend-row"></div>
+          <div class="relative h-[400px]"><canvas id="chartEfekPic"></canvas></div>
+        </div>
+      </section>
+    </div>
+
+
+    <!-- VIEW 1: MATRIKS KODE RISIKO × UNIT PIC -->
+    <div id="view-matriks" class="view-content hidden space-y-4">
+      <div class="flex items-center justify-between no-print">
+        <button onclick="switchView('view-dashboard')"
+          class="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-white hover:bg-amber-50/70 text-slate-800 hover:text-amber-800 text-xs font-semibold shadow-sm border border-slate-200 hover:border-amber-300 transition">
+          <i class="fa-solid fa-arrow-left text-[11px]"></i>
+          <span>Kembali ke Dashboard & Grafik</span>
+        </button>
+      </div>
+
+      <div class="bg-white rounded-2xl shadow-sm border border-slate-200/80 overflow-hidden">
+        <div
+          class="p-4 bg-slate-50/70 border-b border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          <div>
+            <h3 class="text-sm font-bold text-slate-900 flex items-center gap-2">
+              <i class="fa-solid fa-border-all text-amber-700"></i>
+              Matriks Pengendalian Risiko
+            </h3>
+            <p class="text-xs text-slate-500">Klik pada cell mana saja untuk membaca detail lengkap pengendalian dan
+              efektivitas</p>
+          </div>
+          <div class="flex items-center gap-3 text-xs font-medium">
+            <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-full"
+                style="background:#1E3A8A"></span> Lengkap</span>
+            <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-full bg-amber-500"></span> On
+              progress</span>
+            <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-full bg-slate-300"></span> Belum sama
+              sekali</span>
+            <span class="flex items-center gap-1.5 text-slate-400"><span class="font-mono">-</span> Tidak
+              Ditugaskan</span>
+          </div>
+        </div>
+
+        <div class="overflow-auto max-h-[calc(100vh-230px)] min-h-[420px] custom-scrollbar">
+          <table class="w-full text-left text-xs border-collapse">
+            <thead class="sticky top-0 z-20 shadow-sm">
+              <tr
+                class="bg-slate-100 text-slate-700 font-bold uppercase text-[11px] tracking-wider border-b border-slate-200">
+                <th
+                  class="py-3 px-3 w-12 text-center sticky top-0 bg-slate-100 z-20 border-b border-slate-200 shadow-sm">
+                  No</th>
+                <th class="py-3 px-3 w-40 sticky top-0 bg-slate-100 z-20 border-b border-slate-200 shadow-sm">Kode
+                  Risiko</th>
+                <th class="py-3 px-3 min-w-[200px] sticky top-0 bg-slate-100 z-20 border-b border-slate-200 shadow-sm">
+                  Uraian Risiko</th>
+                <th
+                  class="py-3 px-2 text-center w-32 sticky top-0 bg-amber-50 text-amber-900 z-20 border-b border-slate-200 shadow-sm">
+                  Inspektorat I</th>
+                <th
+                  class="py-3 px-2 text-center w-32 sticky top-0 bg-blue-50 text-blue-900 z-20 border-b border-slate-200 shadow-sm">
+                  Inspektorat II</th>
+                <th
+                  class="py-3 px-2 text-center w-32 sticky top-0 bg-amber-50 text-amber-900 z-20 border-b border-slate-200 shadow-sm">
+                  Inspektorat III</th>
+                <th
+                  class="py-3 px-2 text-center w-32 sticky top-0 bg-blue-50 text-blue-900 z-20 border-b border-slate-200 shadow-sm">
+                  Inspektorat IV</th>
+                <th
+                  class="py-3 px-2 text-center w-32 sticky top-0 bg-amber-50 text-amber-900 z-20 border-b border-slate-200 shadow-sm">
+                  Inspektorat V</th>
+                <th
+                  class="py-3 px-2 text-center w-40 sticky top-0 bg-amber-50 text-amber-950 z-20 border-b border-slate-200 shadow-sm">
+                  Sekretariat Itjen (SIJ)</th>
+              </tr>
+            </thead>
+            <tbody id="matrixTableBody" class="divide-y divide-slate-100">
+              <!-- Rendered via JS -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- VIEW 2: TABEL RISIKO DETAIL LENGKAP -->
+    <div id="view-register" class="view-content hidden space-y-4">
+      <!-- Sticky Filter & Header Controls -->
+      <div
+        class="sticky top-2 z-30 bg-white/95 backdrop-blur-md rounded-2xl p-3 sm:p-4 shadow-md border border-slate-200/90 flex flex-col md:flex-row items-center justify-between gap-3 transition-all duration-200 no-print">
+        <div class="flex items-center gap-2.5 w-full md:w-auto">
+          <button onclick="switchView('view-dashboard')"
+            class="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-100 hover:bg-[#FFF500]/30 hover:border-[#FFF500] text-slate-800 hover:text-slate-950 text-xs font-semibold border border-slate-200 transition shrink-0 shadow-sm"
+            title="Kembali ke Dashboard & Grafik">
+            <i class="fa-solid fa-arrow-left text-[11px]"></i>
+            <span class="hidden sm:inline">Dashboard</span>
+          </button>
+
+          <div class="relative flex-1 md:w-80">
+            <i class="fa-solid fa-magnifying-glass absolute left-3 top-2.5 text-slate-400 text-xs"></i>
+            <input type="text" id="searchInput" oninput="applyFilters()"
+              placeholder="Cari kode risiko, uraian, rencana, pengendalian..."
+              class="w-full pl-8 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-[#FFF500] font-sans transition">
+          </div>
+        </div>
+
+        <div class="flex flex-wrap items-center gap-2 w-full md:w-auto justify-end">
+          <!-- Filter PIC Mitigasi (G) Lengkap -->
+          <select id="filterPic" onchange="applyFilters()"
+            class="text-xs py-2 px-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#FFF500]">
+            <option value="ALL">Semua PIC Mitigasi</option>
+            <optgroup label="Unit Inspektorat">
+              <option value="Inspektorat I">Inspektorat I</option>
+              <option value="Inspektorat II">Inspektorat II</option>
+              <option value="Inspektorat III">Inspektorat III</option>
+              <option value="Inspektorat IV">Inspektorat IV</option>
+              <option value="Inspektorat V">Inspektorat V</option>
+            </optgroup>
+            <optgroup label="Sekretariat Inspektorat Jenderal (SIJ)">
+              <option value="SIJ">Sekretariat Itjen - SIJ Gabungan</option>
+              <option value="SIJ (RK)">SIJ (RK) - Rencana & Keuangan</option>
+              <option value="SIJ (PTLHPKI)">SIJ (PTLHPKI) - Pemantauan TL</option>
+              <option value="SIJ (HKO)">SIJ (HKO) - Hukum & Komunikasi</option>
+              <option value="SIJ (SIJU)">SIJ (SIJU) - SI & Umum</option>
+            </optgroup>
+          </select>
+
+          <!-- Filter Status Pengendalian (Sudah / Belum) -->
+          <select id="filterStatus" onchange="applyFilters()"
+            class="text-xs py-2 px-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#FFF500]">
+            <option value="ALL">Semua Status</option>
+            <option value="Sudah Dilakukan">Sudah Dilakukan</option>
+            <option value="Belum Dilakukan">Belum Dilakukan</option>
+          </select>
+
+          <!-- Filter Efektivitas Pengendalian -->
+          <select id="filterEfek" onchange="applyFilters()"
+            class="text-xs py-2 px-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#FFF500]">
+            <option value="ALL">Semua Efektivitas</option>
+            <option value="Efektif">Efektif</option>
+            <option value="Cukup Efektif">Cukup Efektif</option>
+            <option value="Kelemahan Material">Kelemahan Material</option>
+            <option value="-">Belum Diisi (-)</option>
+          </select>
+
+          <button onclick="resetFilters()" class="text-xs py-2 px-2.5 text-slate-500 hover:text-slate-800 transition">
+            <i class="fa-solid fa-filter-circle-xmark"></i> Reset
+          </button>
+        </div>
+      </div>
+
+      <!-- Detail Table -->
+      <div class="bg-white rounded-2xl shadow-sm border border-slate-200/80 overflow-hidden">
+        <div class="overflow-auto max-h-[calc(100vh-230px)] min-h-[420px] custom-scrollbar">
+          <table class="w-full text-left text-xs border-collapse">
+            <thead class="sticky top-0 z-20 shadow-sm">
+              <tr class="bg-slate-100 text-slate-700 font-semibold uppercase text-[11px] tracking-wider border-b
+                      border-slate-200">
+                <th
+                  class="py-3 px-3 w-12 text-center sticky top-0 bg-slate-100 z-20 border-b border-slate-200 shadow-sm">
+                  No</th>
+                <th
+                  class="py-3 px-3 w-36 whitespace-nowrap sticky top-0 bg-slate-100 z-20 border-b border-slate-200 shadow-sm">
+                  Kode Risiko</th>
+                <th class="py-3 px-3 min-w-[200px] sticky top-0 bg-slate-100 z-20 border-b border-slate-200 shadow-sm">
+                  Uraian Risiko</th>
+                <th
+                  class="py-3 px-3 w-32 whitespace-nowrap sticky top-0 bg-slate-100 z-20 border-b border-slate-200 shadow-sm">
+                  PIC Mitigasi</th>
+                <th class="py-3 px-3 min-w-[220px] sticky top-0 bg-slate-100 z-20 border-b border-slate-200 shadow-sm">
+                  Rencana Tindak Pengendalian</th>
+                <th class="py-3 px-3 min-w-[240px] sticky top-0 bg-slate-100 z-20 border-b border-slate-200 shadow-sm">
+                  Pengendalian yang Sudah Dilakukan</th>
+                <th
+                  class="py-3 px-3 text-center w-32 whitespace-nowrap sticky top-0 bg-slate-100 z-20 border-b border-slate-200 shadow-sm">
+                  Status</th>
+              </tr>
+            </thead>
+            <tbody id="detailTableBody" class="divide-y divide-slate-100">
+              <!-- Rendered via JS -->
+            </tbody>
+          </table>
+        </div>
+
+        <div
+          class="p-3 bg-slate-50/60 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
+          <span id="tableCountInfo">Menampilkan data...</span>
+          <span class="text-[11px] text-slate-400">Klik baris tabel untuk melihat detail kendala dan link data
+            dukung</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- VIEW 3: APPS SCRIPT (route: #/apps-script) -->
+    <div id="view-apps-script" class="view-content hidden">
+      <div class="bg-white rounded-2xl shadow-sm border border-slate-200/80 overflow-hidden">
+        <iframe id="appsScriptFrame" data-src="app-script.html" title="Apps Script"
+          allow="clipboard-write; clipboard-read" class="w-full border-0 block"
+          style="height: calc(100vh - 150px); min-height: 520px;"></iframe>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- Modal Pop-Up Detail Pengendalian -->
+  <div id="detailModal"
+    class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden no-print">
+    <div
+      class="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] flex flex-col shadow-2xl border border-slate-200 overflow-hidden animate-in fade-in duration-200">
+      <div
+        class="p-4 sm:p-5 bg-gradient-to-r from-[#0B0B0C] via-[#1A1A1D] to-[#0B0B0C] text-white flex items-center justify-between border-b-2 border-[#FFF500]">
+        <div class="flex items-center gap-3">
+          <span id="modalRiskNo"
+            class="px-2.5 py-1 rounded-lg text-xs font-bold bg-[#FFF500] text-slate-950 shadow-sm">R1</span>
+          <div>
+            <h3 id="modalKodeRisiko" class="font-bold text-sm sm:text-base font-mono">Kode Risiko</h3>
+            <p id="modalPicName" class="text-xs text-yellow-200/90 font-semibold">Inspektorat I</p>
+          </div>
+        </div>
+        <button onclick="closeModal()"
+          class="w-8 h-8 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white flex items-center justify-center transition">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <div class="p-5 overflow-y-auto custom-scrollbar space-y-4 text-xs sm:text-sm">
+        <!-- Status & Efektivitas Badges -->
+        <div class="flex flex-wrap items-center gap-3 p-3 rounded-xl bg-slate-50 border border-slate-200/70">
+          <div>
+            <span class="text-[11px] font-semibold text-slate-500 uppercase tracking-wider block">Status
+              Pengendalian</span>
+            <span id="modalStatusBadge"
+              class="inline-block mt-0.5 px-2.5 py-1 rounded-md text-xs font-bold bg-emerald-100 text-emerald-800">
+              Sudah Dilakukan
+            </span>
+          </div>
+          <div class="border-l border-slate-200 pl-3">
+            <span class="text-[11px] font-semibold text-slate-500 uppercase tracking-wider block">Efektivitas</span>
+            <span id="modalEfektivitasBadge"
+              class="inline-block mt-0.5 px-2.5 py-1 rounded-md text-xs font-bold bg-slate-100 text-slate-700">
+              Cukup Efektif
+            </span>
+          </div>
+        </div>
+
+        <!-- Uraian Risiko -->
+        <div>
+          <h4 class="font-bold text-slate-700 uppercase tracking-wider text-[11px] mb-1">Uraian Risiko</h4>
+          <p id="modalUraianRisiko"
+            class="text-slate-800 bg-slate-50/70 p-3 rounded-xl border border-slate-100 leading-relaxed text-xs sm:text-sm">
+          </p>
+        </div>
+
+        <!-- Rencana Tindak Pengendalian (F) -->
+        <div id="modalRencanaContainer">
+          <h4
+            class="font-bold text-slate-700 uppercase tracking-wider text-[11px] mb-1 flex items-center gap-1.5 text-blue-900">
+            <i class="fa-solid fa-list-check text-blue-600"></i> Rencana Tindak Pengendalian
+          </h4>
+          <div id="modalRencanaText"
+            class="p-3.5 rounded-xl bg-blue-50/40 border border-blue-100 text-slate-800 text-xs sm:text-sm leading-relaxed whitespace-pre-line">
+          </div>
+        </div>
+
+        <!-- Pengendalian Yang Sudah Dilakukan (H) -->
+        <div>
+          <h4
+            class="font-bold text-slate-700 uppercase tracking-wider text-[11px] mb-1 flex items-center gap-1.5 text-emerald-900">
+            <i class="fa-solid fa-circle-check text-emerald-600"></i> Pengendalian yang Sudah Dilakukan
+          </h4>
+          <div id="modalPengendalianText"
+            class="p-3.5 rounded-xl bg-emerald-50/40 border border-emerald-100 text-slate-800 text-xs sm:text-sm leading-relaxed whitespace-pre-line">
+          </div>
+        </div>
+
+        <!-- Kendala & Hambatan -->
+        <div id="modalKendalaContainer">
+          <h4 class="font-bold text-slate-700 uppercase tracking-wider text-[11px] mb-1">Kendala / Hambatan</h4>
+          <p id="modalKendalaText"
+            class="text-slate-700 bg-slate-50/70 p-3 rounded-xl border border-slate-100 leading-relaxed text-xs"></p>
+        </div>
+
+        <!-- Link Data Dukung -->
+        <div id="modalLinkContainer">
+          <h4 class="font-bold text-slate-700 uppercase tracking-wider text-[11px] mb-1">Link Data Dukung Pelaksanaan
+          </h4>
+          <div id="modalLinkText" class="p-2.5 rounded-xl bg-amber-50/40 border border-amber-100 text-xs"></div>
+        </div>
+      </div>
+
+      <div class="p-4 bg-slate-50 border-t border-slate-200 flex justify-end">
+        <button onclick="closeModal()"
+          class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-xl text-xs font-semibold transition">
+          Tutup
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Ubah Link Data Spreadsheet -->
+  <div id="changeUrlModal"
+    class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden no-print">
+    <div
+      class="bg-white rounded-2xl max-w-xl w-full flex flex-col shadow-2xl border border-slate-200 overflow-hidden animate-in fade-in duration-200">
+      <div
+        class="p-4 sm:p-5 bg-gradient-to-r from-[#0B0B0C] via-[#1A1A1D] to-[#0B0B0C] text-white flex items-center justify-between border-b-2 border-[#FFF500]">
+        <div class="flex items-center gap-2.5">
+          <div
+            class="w-9 h-9 rounded-xl bg-[#FFF500]/20 text-[#FFF500] flex items-center justify-center border border-[#FFF500]/40 shadow-sm">
+            <i class="fa-solid fa-link text-base"></i>
+          </div>
+          <div>
+            <h3 class="font-bold text-sm sm:text-base">Pengaturan Sumber Data</h3>
+            <p class="text-xs text-yellow-200/80">Ganti url untuk sinkronisasi real-time</p>
+          </div>
+        </div>
+        <button onclick="closeChangeUrlModal()"
+          class="w-8 h-8 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white flex items-center justify-center transition">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <div class="p-5 space-y-4 text-xs sm:text-sm">
+        <div>
+          <label for="inputSheetUrl" class="block font-semibold text-slate-700 mb-1">Link Google Spreadsheet:</label>
+          <input type="text" id="inputSheetUrl" placeholder="https://docs.google.com/spreadsheets/d/.../edit#gid=..."
+            class="w-full px-3 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-[#FFF500] font-mono">
+          <p class="text-[11px] text-slate-500 mt-1">Masukkan link URL Google Sheets monitoring risiko.</p>
+        </div>
+
+        <!-- Box Ketentuan Kolom -->
+        <div class="p-3.5 rounded-xl bg-amber-50/70 border border-amber-200 text-slate-700 space-y-1.5 text-xs">
+          <div class="font-bold text-amber-900 flex items-center gap-1.5">
+            <i class="fa-solid fa-circle-info text-amber-600"></i> Ketentuan Nama Kolom Spreadsheet:
+          </div>
+          <p class="text-[11px] leading-relaxed text-slate-600">
+            Jumlah baris kode risiko dan rencana pengendalian <strong>bersifat dinamis (bisa bertambah atau
+              berkurang)</strong>. Yang wajib sama hanya <strong>nama header / kolom berikut</strong>:
+          </p>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-1.5 text-[11px] text-slate-700 font-medium pt-1">
+            <div class="bg-white/80 p-1.5 rounded border border-amber-100"><strong class="text-slate-900">1.</strong> No
+            </div>
+            <div class="bg-white/80 p-1.5 rounded border border-amber-100"><strong class="text-slate-900">2.</strong>
+              Kode Risiko</div>
+            <div class="bg-white/80 p-1.5 rounded border border-amber-100"><strong class="text-slate-900">3.</strong>
+              Uraian Risiko</div>
+            <div class="bg-white/80 p-1.5 rounded border border-amber-100"><strong class="text-slate-900">4.</strong>
+              PIC Mitigasi</div>
+            <div class="bg-white/80 p-1.5 rounded border border-amber-100"><strong class="text-slate-900">5.</strong>
+              Rencana Tindak Pengendalian</div>
+            <div class="bg-white/80 p-1.5 rounded border border-amber-100"><strong class="text-slate-900">6.</strong>
+              Pengendalian yang Sudah Dilakukan</div>
+            <div class="bg-white/80 p-1.5 rounded border border-amber-100"><strong class="text-slate-900">7.</strong>
+              Status</div>
+          </div>
+          <div
+            class="pt-1.5 text-[11px] text-emerald-800 font-semibold flex items-center gap-1.5 border-t border-amber-200/60 mt-1">
+            <i class="fa-solid fa-shield-halved text-emerald-600"></i>
+            <span>Penting: Setel hak akses Google Sheets ke <u>"Siapa saja yang memiliki link dapat melihat"
+                (Viewer)</u>.</span>
+          </div>
+        </div>
+
+        <div id="urlFeedbackMsg" class="hidden text-xs p-2.5 rounded-lg"></div>
+      </div>
+
+      <div class="p-4 bg-slate-50 border-t border-slate-200 flex flex-wrap items-center justify-between gap-2">
+        <button onclick="resetDefaultSheetUrl()"
+          class="px-3 py-2 text-rose-600 hover:bg-rose-50 rounded-xl text-xs font-semibold transition border border-rose-200">
+          <i class="fa-solid fa-rotate-left mr-1"></i> Reset ke Link Default
+        </button>
+        <div class="flex items-center gap-2">
+          <button onclick="closeChangeUrlModal()"
+            class="px-3.5 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-xl text-xs font-semibold transition">
+            Batal
+          </button>
+          <button onclick="saveAndSyncSheetUrl()" id="btnSaveUrl"
+            class="px-4 py-2 bg-[#111113] hover:bg-[#000000] text-white hover:text-[#FFF500] rounded-xl text-xs font-semibold transition shadow-sm flex items-center gap-1.5 border border-[#FFF500]/40">
+            <i class="fa-solid fa-floppy-disk text-[#FFF500]"></i> Simpan & Sinkronkan
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification Floating -->
+  <div id="toastNotification"
+    class="fixed bottom-5 right-5 z-50 bg-slate-900 text-white px-4 py-3 rounded-xl shadow-2xl border border-slate-700 text-xs flex items-center gap-2.5 transition-all duration-300 transform translate-y-20 opacity-0 pointer-events-none no-print">
+    <i id="toastIcon" class="fa-solid fa-circle-check text-emerald-400 text-base"></i>
+    <span id="toastMsg" class="font-medium">Data berhasil disinkronkan</span>
+  </div>
+
+  <!-- Footer -->
+  <footer class="bg-white border-t-2 border-t-[#FFF500]/70 py-4 mt-auto no-print">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center text-xs text-slate-500">
+      <p>© 2026 Inspektorat Jenderal Kementerian Energi dan Sumber Daya Mineral • Sistem Monitoring Pengendalian Risiko
+        Terintegrasi</p>
+    </div>
+  </footer>
+
+  <!-- SCRIPT LOGIC & REAL-TIME DATA ENGINE -->
+  <script>
+    const DEFAULT_SHEET_URL = "https://docs.google.com/spreadsheets/d/1IALIKNQBasKoP_-x88Zhc-McVKSTdyt3/edit?gid=40730807#gid=40730807";
+    let currentSheetUrl = localStorage.getItem("RISK_DASHBOARD_SHEET_URL") || DEFAULT_SHEET_URL;
+    let autoSyncTimer = null;
+    let isAutoSyncEnabled = localStorage.getItem("RISK_DASHBOARD_AUTO_SYNC") !== "false";
+    let isSyncing = false;
+    let appData = null;
+    let charts = {};
+
+    document.addEventListener("DOMContentLoaded", () => {
+      // 2. Tampilkan data awal dari data_clean.js agar tidak ada layar kosong
+      if (window.RISK_DATA) {
+        appData = window.RISK_DATA;
+        renderDashboard();
+      }
+
+      // 2. Pasang tampilan URL & switch auto-sync
+      updateSheetUrlDisplay();
+      const toggle = document.getElementById("autoSyncToggle");
+      if (toggle) toggle.checked = isAutoSyncEnabled;
+
+      // 3. Langsung lakukan sinkronisasi data terbaru secara real-time dari Google Sheets
+      syncFromGoogleSheets(currentSheetUrl, false);
+
+      // 4. Jalankan siklus sinkronisasi berkala (Real-time auto-refresh)
+      initAutoSync();
+
+      // 5. Terapkan route awal (mis. #/apps-script)
+      if (location.hash === '#/apps-script' || /\/apps-script\/?$/.test(location.pathname)) routeFromLocation();
+    });
+
+    // Ambil data Google Sheets via JSONP
+    function fetchSheetViaJsonp(sheetUrl) {
+      return new Promise((resolve, reject) => {
+        const idMatch = sheetUrl.match(/\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/);
+        if (!idMatch) {
+          return reject(new Error("Format URL Google Sheets tidak valid. ID spreadsheet tidak ditemukan."));
+        }
+        const sheetId = idMatch[1];
+
+        // Ambil gid (ID tab sheet)
+        const gidMatch = sheetUrl.match(/gid=([0-9]+)/);
+        const gidParam = gidMatch ? `&gid=${gidMatch[1]}` : '';
+
+        // Nama callback unik untuk mencegah collision
+        const cbName = 'gviz_cb_' + Date.now() + '_' + Math.floor(Math.random() * 100000);
+        const scriptUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=responseHandler:${cbName}${gidParam}&_cb=${Date.now()}`;
+
+        let isDone = false;
+        const scriptEl = document.createElement('script');
+        scriptEl.src = scriptUrl;
+        scriptEl.async = true;
+
+        const timer = setTimeout(() => {
+          if (!isDone) {
+            isDone = true;
+            cleanup();
+            reject(new Error("Koneksi ke Google Sheets timeout (15 detik). Pastikan komputer terhubung ke internet dan spreadsheet disetel ke 'Siapa saja yang memiliki link dapat melihat'."));
+          }
+        }, 15000);
+
+        function cleanup() {
+          clearTimeout(timer);
+          delete window[cbName];
+          if (scriptEl.parentNode) scriptEl.parentNode.removeChild(scriptEl);
+        }
+
+        window[cbName] = function (res) {
+          if (isDone) return;
+          isDone = true;
+          cleanup();
+
+          if (!res) {
+            return reject(new Error("Menerima respons kosong dari Google Sheets."));
+          }
+          if (res.status !== 'ok') {
+            const errMsg = res.errors && res.errors[0] ? res.errors[0].message : res.status;
+            return reject(new Error(`Google Sheets menolak akses: ${errMsg}. Pastikan izin sharing disetel 'Anyone with link can view'.`));
+          }
+          if (!res.table || !res.table.rows) {
+            return reject(new Error("Tabel spreadsheet tidak memiliki baris data."));
+          }
+          resolve(res.table);
+        };
+
+        scriptEl.onerror = function () {
+          if (isDone) return;
+          isDone = true;
+          cleanup();
+          reject(new Error("Gagal mengunduh script Google Sheets. Periksa koneksi internet atau izin sharing spreadsheet."));
+        };
+
+        document.head.appendChild(scriptEl);
+      });
+    }
+
+    // Engine Pembersih Data Google Sheets dari Objek Tabel GViz
+    function cleanGvizTable(table, sheetUrl) {
+      const cols = table.cols || [];
+      const rows = table.rows || [];
+
+      // Deteksi indeks kolom berdasarkan label resmi sheet
+      let colIdx = { no: 0, kode: 1, uraian: 3, f: 5, pic: 6, h: 7, dukung: 8, kendala: 13, efek: 16, status: -1 };
+      for (let i = 0; i < cols.length; i++) {
+        const lbl = (cols[i]?.label || '').toLowerCase();
+        if (lbl.includes('kode risiko')) colIdx.kode = i;
+        if (lbl.includes('pic mitigasi')) colIdx.pic = i;
+        if (lbl.includes('rencana tindak') || lbl.includes('rencana pengendalian')) colIdx.f = i;
+        if (lbl.includes('pengendalian yang') && (lbl.includes('sudah dilakukan') || lbl.includes('sudah ada ya'))) colIdx.h = i;
+        if (lbl.includes('status')) colIdx.status = i;
+        if (lbl.includes('efektivitas')) colIdx.efek = i;
+        if (lbl.includes('kendala')) colIdx.kendala = i;
+        if (lbl.includes('link data dukung') || lbl.includes('data dukung')) colIdx.dukung = i;
+        if (lbl === 'no' || lbl.startsWith('no ') || lbl.startsWith('no')) colIdx.no = i;
+        if (lbl.includes('uraian risiko')) colIdx.uraian = i;
+      }
+
+      let currentRisk = null;
+      let currentPic = null;
+      let currentEselon2 = null;
+      const risksMap = {};
+      let flatRecords = [];
+
+      for (let idx = 0; idx < rows.length; idx++) {
+        const c = rows[idx].c || [];
+        const getV = (i) => (i < c.length && c[i] && c[i].v !== null && c[i].v !== undefined) ? String(c[i].v).trim() : '';
+
+        let noVal = getV(colIdx.no);
+        let kodeVal = getV(colIdx.kode);
+        let uraianVal = getV(colIdx.uraian);
+        let fVal = getV(colIdx.f);
+        let picVal = getV(colIdx.pic);
+        let hVal = getV(colIdx.h);
+        let dukungVal = getV(colIdx.dukung);
+        let kendalaVal = getV(colIdx.kendala);
+        let efekVal = getV(colIdx.efek);
+        let statusVal = colIdx.status !== -1 ? getV(colIdx.status) : '';
+
+        // Standardisasi No (R1, R2, dst.)
+        if (noVal.match(/^R\d+/i)) {
+          noVal = noVal.toUpperCase();
+        } else if (noVal.match(/^\d+$/)) {
+          noVal = 'R' + noVal;
+        }
+
+        if (noVal && noVal.startsWith('R') && kodeVal && !noVal.includes('(')) {
+          currentRisk = noVal;
+          currentPic = null;
+          currentEselon2 = null;
+          if (!risksMap[currentRisk]) {
+            risksMap[currentRisk] = {
+              no: currentRisk,
+              kode_risiko: kodeVal,
+              uraian_risiko: uraianVal,
+              kendala_global: kendalaVal,
+              pic_mitigasi: {}
+            };
+          } else if (uraianVal && !risksMap[currentRisk].uraian_risiko) {
+            risksMap[currentRisk].uraian_risiko = uraianVal;
+          }
+        }
+
+        if (!currentRisk || !risksMap[currentRisk]) continue;
+
+        // Normalisasi PIC Mitigasi & Unit Eselon jika picVal ada
+        let stdPic = null;
+        let eselon2 = null;
+
+        if (picVal) {
+          if (picVal.match(/Inspektorat\s+I\b/i) && !picVal.match(/Inspektorat\s+I[IV]/i)) {
+            stdPic = 'Inspektorat I'; eselon2 = 'Inspektorat I';
+          } else if (picVal.match(/Inspektorat\s+II\b/i)) {
+            stdPic = 'Inspektorat II'; eselon2 = 'Inspektorat II';
+          } else if (picVal.match(/Inspektorat\s+III\b/i)) {
+            stdPic = 'Inspektorat III'; eselon2 = 'Inspektorat III';
+          } else if (picVal.match(/Inspektorat\s+IV\b/i)) {
+            stdPic = 'Inspektorat IV'; eselon2 = 'Inspektorat IV';
+          } else if (picVal.match(/Inspektorat\s+V\b/i)) {
+            stdPic = 'Inspektorat V'; eselon2 = 'Inspektorat V';
+          } else if (picVal.includes('SIJ') || picVal.includes('Sekretariat')) {
+            eselon2 = 'Sekretariat Inspektorat Jenderal';
+            if (picVal.includes('RK') || picVal.includes('Rencana')) stdPic = 'SIJ (RK)';
+            else if (picVal.includes('PTL') || picVal.includes('Tindak')) stdPic = 'SIJ (PTLHPKI)';
+            else if (picVal.includes('HKO') || picVal.includes('Hukum')) stdPic = 'SIJ (HKO)';
+            else if (picVal.includes('SIJU') || picVal.includes('Umum')) stdPic = 'SIJ (SIJU)';
+            else stdPic = picVal.replace(/\s+/g, ' ').trim();
+          } else if (!picVal.startsWith('(') && !picVal.toLowerCase().includes('kolom')) {
+            stdPic = picVal.replace(/\s+/g, ' ').trim();
+            eselon2 = stdPic;
+          }
+          if (stdPic) {
+            currentPic = stdPic;
+            currentEselon2 = eselon2;
+          }
+        }
+
+        if (currentPic) {
+          if (!risksMap[currentRisk].pic_mitigasi[currentPic]) {
+            risksMap[currentRisk].pic_mitigasi[currentPic] = {
+              pic: currentPic,
+              kategori_eselon2: currentEselon2,
+              status: 'Belum Dilakukan',
+              rencana_tindak_pengendalian: '',
+              rencana_list: [],
+              pengendalian_dilakukan: '',
+              pengendalian_list: [],
+              link_dukung: '',
+              kendala: '',
+              efektivitas: '-'
+            };
+          }
+
+          const target = risksMap[currentRisk].pic_mitigasi[currentPic];
+          if (fVal && !fVal.startsWith('(') && !fVal.match(/kolom/i)) {
+            if (!target.rencana_list.includes(fVal)) {
+              target.rencana_list.push(fVal);
+            }
+            target.rencana_tindak_pengendalian = target.rencana_list.map(x => '• ' + x).join('\n');
+          }
+          if (hVal && !hVal.startsWith('(') && !hVal.match(/kolom/i)) {
+            if (!target.pengendalian_list.includes(hVal)) {
+              target.pengendalian_list.push(hVal);
+            }
+            target.status = 'Sudah Dilakukan';
+            target.pengendalian_dilakukan = target.pengendalian_list.map(x => '• ' + x).join('\n');
+          }
+          if (dukungVal && !target.link_dukung) target.link_dukung = dukungVal;
+          if (kendalaVal && !target.kendala) target.kendala = kendalaVal;
+          if (efekVal && efekVal !== '#REF!' && efekVal !== '-') {
+            target.efektivitas = efekVal;
+          }
+
+          // Simpan ke flatRecords per-row individual (dijabarkan per baris rencana/pengendalian)
+          if ((fVal || hVal || picVal) && !fVal.startsWith('(') && !hVal.startsWith('(')) {
+            flatRecords.push({
+              no_risiko: risksMap[currentRisk].no,
+              kode_risiko: risksMap[currentRisk].kode_risiko,
+              uraian_risiko: risksMap[currentRisk].uraian_risiko || '',
+              pic_mitigasi: currentPic,
+              kategori_eselon2: currentEselon2,
+              status_pengendalian: statusVal || (hVal ? 'Sudah Dilakukan' : 'Belum Dilakukan'),
+              rencana_tindak_pengendalian: fVal,
+              pengendalian_yang_sudah_dilakukan: hVal,
+              efektivitas_pengendalian: (efekVal && efekVal !== '#REF!' && efekVal !== '-') ? efekVal : '-',
+              link_dukung: dukungVal,
+              kendala: kendalaVal
+            });
+          }
+        }
+      }
+
+      const sortedKeys = Object.keys(risksMap).sort((a, b) => {
+        const numA = parseInt(a.replace(/\D/g, '') || 0);
+        const numB = parseInt(b.replace(/\D/g, '') || 0);
+        return numA - numB;
+      });
+
+      const summaryEselon2 = {
+        'Inspektorat I': { unit: 'Inspektorat I', total_titik: 0, sudah: 0, belum: 0, persentase: 0 },
+        'Inspektorat II': { unit: 'Inspektorat II', total_titik: 0, sudah: 0, belum: 0, persentase: 0 },
+        'Inspektorat III': { unit: 'Inspektorat III', total_titik: 0, sudah: 0, belum: 0, persentase: 0 },
+        'Inspektorat IV': { unit: 'Inspektorat IV', total_titik: 0, sudah: 0, belum: 0, persentase: 0 },
+        'Inspektorat V': { unit: 'Inspektorat V', total_titik: 0, sudah: 0, belum: 0, persentase: 0 },
+        'Sekretariat Inspektorat Jenderal': { unit: 'Sekretariat Inspektorat Jenderal', alias: 'SIJ', total_titik: 0, sudah: 0, belum: 0, persentase: 0 }
+      };
+
+      const orderedPics = [
+        'Inspektorat I', 'Inspektorat II', 'Inspektorat III', 'Inspektorat IV', 'Inspektorat V',
+        'SIJ (RK)', 'SIJ (PTLHPKI)', 'SIJ (HKO)', 'SIJ (SIJU)'
+      ];
+
+      const summaryPerPic = {};
+      orderedPics.forEach(p => {
+        summaryPerPic[p] = {
+          pic: p,
+          eselon2: p.includes('SIJ') ? 'Sekretariat Inspektorat Jenderal' : p,
+          total_titik: 0, sudah_dilakukan: 0, belum_dilakukan: 0, persentase_selesai: 0, daftar_risiko: []
+        };
+      });
+
+      sortedKeys.forEach(k => {
+        const r = risksMap[k];
+        Object.keys(r.pic_mitigasi).forEach(pName => {
+          const mit = r.pic_mitigasi[pName];
+          const st = mit.status;
+          const es2 = mit.kategori_eselon2;
+
+          if (!summaryPerPic[pName]) {
+            summaryPerPic[pName] = {
+              pic: pName,
+              eselon2: es2,
+              total_titik: 0, sudah_dilakukan: 0, belum_dilakukan: 0, persentase_selesai: 0, daftar_risiko: []
+            };
+            if (!orderedPics.includes(pName)) orderedPics.push(pName);
+          }
+          summaryPerPic[pName].total_titik++;
+          summaryPerPic[pName].daftar_risiko.push(k);
+          if (st === 'Sudah Dilakukan') summaryPerPic[pName].sudah_dilakukan++;
+          else summaryPerPic[pName].belum_dilakukan++;
+
+          if (!summaryEselon2[es2]) {
+            summaryEselon2[es2] = { unit: es2, total_titik: 0, sudah: 0, belum: 0, persentase: 0 };
+          }
+          summaryEselon2[es2].total_titik++;
+          if (st === 'Sudah Dilakukan') summaryEselon2[es2].sudah++;
+          else summaryEselon2[es2].belum++;
+        });
+      });
+
+      Object.values(summaryPerPic).forEach(s => {
+        s.persentase_selesai = s.total_titik > 0 ? Math.round((s.sudah_dilakukan / s.total_titik) * 1000) / 10 : 0;
+      });
+      Object.values(summaryEselon2).forEach(s => {
+        s.persentase = s.total_titik > 0 ? Math.round((s.sudah / s.total_titik) * 1000) / 10 : 0;
+      });
+
+      const totalTitik = Object.values(summaryEselon2).reduce((acc, s) => acc + s.total_titik, 0);
+      const totalSudah = Object.values(summaryEselon2).reduce((acc, s) => acc + s.sudah, 0);
+      const totalBelum = totalTitik - totalSudah;
+
+      return {
+        metadata: {
+          title: "Dashboard Monitoring Pelaksanaan Pengendalian Risiko per Unit PIC ITJEN",
+          institusi: "Inspektorat Jenderal Kementerian Energi dan Sumber Daya Mineral",
+          periode: "Triwulan III Tahun 2026",
+          sumber_data: sheetUrl,
+          total_kode_risiko: sortedKeys.length,
+          total_titik_kendali: totalTitik,
+          total_baris_register: flatRecords.length,
+          total_pengendalian_dilakukan: totalSudah,
+          total_pengendalian_belum: totalBelum,
+          persentase_kepatuhan_total: totalTitik > 0 ? Math.round((totalSudah / totalTitik) * 1000) / 10 : 0,
+          daftar_eselon2: Object.keys(summaryEselon2),
+          daftar_semua_pic: orderedPics
+        },
+        summary_eselon2: summaryEselon2,
+        summary_per_pic: summaryPerPic,
+        risks: sortedKeys.map(k => risksMap[k]),
+        flat_records: flatRecords
+      };
+    }
+
+    // Engine Sinkronisasi Real-Time dari Google Sheets (JSONP Mode)
+    async function syncFromGoogleSheets(sheetUrl, isManualUserAction = false) {
+      if (isSyncing) return;
+      isSyncing = true;
+
+      const badge = document.getElementById("liveStatusBadge");
+      const btnSync = document.getElementById("btnSyncLive");
+      const btnRefresh = document.getElementById("btnRefresh");
+      const lastUpdateEl = document.getElementById("lastUpdatedText");
+
+      if (btnSync) btnSync.innerHTML = `<i class="fa-solid fa-spinner fa-spin text-[10px]"></i> Menyinkronkan...`;
+      if (btnRefresh) btnRefresh.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i><span>Sinkronisasi...</span>`;
+      if (badge) {
+        badge.className = "inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-amber-500/20 text-amber-300 border border-amber-500/30";
+        badge.innerHTML = `<span class="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></span> Menyinkronkan Google Sheets...`;
+      }
+
+      try {
+        // Ambil data via JSONP (Bypass batasan CORS lokal file://)
+        const table = await fetchSheetViaJsonp(sheetUrl);
+        const parsedData = cleanGvizTable(table, sheetUrl);
+
+        if (!parsedData || parsedData.risks.length === 0) {
+          throw new Error("Tidak ditemukan baris data risiko pada sheet. Periksa struktur kolom.");
+        }
+
+        // Berhasil memproses data!
+        appData = parsedData;
+        renderDashboard();
+
+        const now = new Date();
+        const timeStr = now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) + ' WIB';
+        if (lastUpdateEl) lastUpdateEl.textContent = `Terakhir diperbarui: ${timeStr} (Live Google Sheets)`;
+
+        if (badge) {
+          badge.className = "inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30";
+          badge.innerHTML = `<span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span> Live Sinkronisasi Aktif`;
+        }
+
+        if (isManualUserAction) {
+          showToast(`Berhasil disinkronkan langsung dari Google Sheets (${timeStr})`, true);
+        }
+        return true;
+      } catch (err) {
+        console.warn("Sinkronisasi live Google Sheets terkendala:", err.message);
+
+        // Fallback ke data_clean.js jika belum ada data yang dimuat
+        if (!appData && window.RISK_DATA) {
+          appData = window.RISK_DATA;
+          renderDashboard();
+        }
+
+        if (badge) {
+          badge.className = "inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-slate-500/20 text-slate-300 border border-slate-500/30";
+          badge.innerHTML = `<span class="w-2 h-2 rounded-full bg-slate-400"></span> Mode Offline (Data Cadangan Lokal)`;
+        }
+
+        if (isManualUserAction) {
+          showToast(`Sinkronisasi terkendala: ${err.message}`, false);
+        }
+        return false;
+      } finally {
+        isSyncing = false;
+        if (btnSync) btnSync.innerHTML = `<i class="fa-solid fa-rotate text-[10px]"></i> Sinkronkan Sekarang`;
+        if (btnRefresh) btnRefresh.innerHTML = `<i class="fa-solid fa-arrows-rotate"></i><span>Sinkronkan</span>`;
+      }
+    }
+
+    function syncLiveNow() {
+      syncFromGoogleSheets(currentSheetUrl, true);
+    }
+
+    function initAutoSync() {
+      if (autoSyncTimer) clearInterval(autoSyncTimer);
+      if (isAutoSyncEnabled) {
+        autoSyncTimer = setInterval(() => {
+          syncFromGoogleSheets(currentSheetUrl, false);
+        }, 60000); // Sinkronisasi otomatis setiap 60 detik
+      }
+    }
+
+    function toggleAutoSync(enabled) {
+      isAutoSyncEnabled = enabled;
+      localStorage.setItem("RISK_DASHBOARD_AUTO_SYNC", enabled ? "true" : "false");
+      initAutoSync();
+      showToast(enabled ? "Auto-Sync Real-Time diaktifkan (tiap 60 detik)" : "Auto-Sync Real-Time dinonaktifkan", true);
+    }
+
+    function openChangeUrlModal() {
+      const input = document.getElementById("inputSheetUrl");
+      input.value = currentSheetUrl;
+      const feedback = document.getElementById("urlFeedbackMsg");
+      feedback.classList.add("hidden");
+      document.getElementById("changeUrlModal").classList.remove("hidden");
+    }
+
+    function closeChangeUrlModal() {
+      document.getElementById("changeUrlModal").classList.add("hidden");
+    }
+
+    async function saveAndSyncSheetUrl() {
+      const input = document.getElementById("inputSheetUrl");
+      const newUrl = input.value.trim();
+      const feedback = document.getElementById("urlFeedbackMsg");
+      const btnSave = document.getElementById("btnSaveUrl");
+
+      if (!newUrl || !newUrl.includes("docs.google.com/spreadsheets")) {
+        feedback.className = "text-xs p-2.5 rounded-lg bg-rose-50 text-rose-700 border border-rose-200 block";
+        feedback.innerHTML = `<i class="fa-solid fa-circle-exclamation mr-1"></i> Mohon masukkan tautan Google Spreadsheet yang valid!`;
+        return;
+      }
+
+      btnSave.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Memeriksa Link...`;
+      btnSave.disabled = true;
+
+      try {
+        const success = await syncFromGoogleSheets(newUrl, true);
+        if (success) {
+          currentSheetUrl = newUrl;
+          localStorage.setItem("RISK_DASHBOARD_SHEET_URL", newUrl);
+          updateSheetUrlDisplay();
+          closeChangeUrlModal();
+        } else {
+          feedback.className = "text-xs p-2.5 rounded-lg bg-rose-50 text-rose-700 border border-rose-200 block";
+          feedback.innerHTML = `<i class="fa-solid fa-circle-exclamation mr-1"></i> Gagal menghubungkan ke spreadsheet. Pastikan spreadsheet disetel ke 'Siapa saja yang memiliki link dapat melihat' (Viewer).`;
+        }
+      } catch (e) {
+        feedback.className = "text-xs p-2.5 rounded-lg bg-rose-50 text-rose-700 border border-rose-200 block";
+        feedback.innerHTML = `<i class="fa-solid fa-circle-exclamation mr-1"></i> Gagal menghubungkan ke sheet: ${e.message}`;
+      } finally {
+        btnSave.innerHTML = `<i class="fa-solid fa-floppy-disk"></i> Simpan & Sinkronkan`;
+        btnSave.disabled = false;
+      }
+    }
+
+    function resetDefaultSheetUrl() {
+      currentSheetUrl = DEFAULT_SHEET_URL;
+      localStorage.removeItem("RISK_DASHBOARD_SHEET_URL");
+      document.getElementById("inputSheetUrl").value = DEFAULT_SHEET_URL;
+      updateSheetUrlDisplay();
+      syncFromGoogleSheets(DEFAULT_SHEET_URL, true);
+      closeChangeUrlModal();
+      showToast("Link sumber data berhasil dikembalikan ke default", true);
+    }
+
+    function updateSheetUrlDisplay() {
+      const navBtnGS = document.getElementById("navBtnGoogleSheets");
+      if (navBtnGS) navBtnGS.href = currentSheetUrl;
+      const previewEl = document.getElementById("sidebarUrlPreview");
+      if (previewEl) previewEl.textContent = currentSheetUrl;
+      const btnGS = document.getElementById("btnGoogleSheets");
+      if (btnGS) btnGS.href = currentSheetUrl;
+    }
+
+    function toggleSidebar(isOpen) {
+      const drawer = document.getElementById("sidebarDrawer");
+      const backdrop = document.getElementById("sidebarBackdrop");
+      if (!drawer || !backdrop) return;
+      if (isOpen) {
+        backdrop.classList.remove("hidden");
+        setTimeout(() => backdrop.classList.remove("opacity-0"), 10);
+        drawer.classList.remove("-translate-x-full");
+      } else {
+        drawer.classList.add("-translate-x-full");
+        backdrop.classList.add("opacity-0");
+        setTimeout(() => backdrop.classList.add("hidden"), 300);
+      }
+    }
+
+    function navSwitchView(viewId) {
+      switchView(viewId);
+      toggleSidebar(false);
+    }
+
+    function openChangeUrlFromNav() {
+      toggleSidebar(false);
+      openChangeUrlModal();
+    }
+
+    function showToast(msg, isSuccess = true) {
+      const toast = document.getElementById("toastNotification");
+      const icon = document.getElementById("toastIcon");
+      const msgEl = document.getElementById("toastMsg");
+
+      msgEl.textContent = msg;
+      if (isSuccess) {
+        icon.className = "fa-solid fa-circle-check text-emerald-400 text-base";
+      } else {
+        icon.className = "fa-solid fa-triangle-exclamation text-amber-400 text-base";
+      }
+
+      toast.classList.remove("translate-y-20", "opacity-0", "pointer-events-none");
+      setTimeout(() => {
+        toast.classList.add("translate-y-20", "opacity-0", "pointer-events-none");
+      }, 3500);
+    }
+
+    const NAV_IDLE = "sidebar-nav-btn w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl font-medium text-slate-300 hover:bg-white/10 hover:text-white transition text-left";
+    const NAV_ACTIVE = "sidebar-nav-btn w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl transition text-[#FFF500] bg-white/10 border border-[#FFF500]/60 shadow-sm shadow-[#FFF500]/10 text-left font-semibold";
+
+    function switchView(viewId) {
+      document.querySelectorAll('.view-content').forEach(el => el.classList.add('hidden'));
+      const target = document.getElementById(viewId);
+      if (target) target.classList.remove('hidden');
+
+      const navMap = { 'view-dashboard': 'navBtnDashboard', 'view-matriks': 'navBtnMatriks', 'view-register': 'navBtnRegister', 'view-apps-script': 'navBtnAppsScript' };
+      document.querySelectorAll('.sidebar-nav-btn').forEach(btn => { btn.className = NAV_IDLE; });
+      const activeNav = document.getElementById(navMap[viewId]);
+      if (activeNav) activeNav.className = NAV_ACTIVE;
+
+      // Muat iframe Apps Script hanya saat halaman dibuka (lazy load)
+      if (viewId === 'view-apps-script') {
+        const fr = document.getElementById('appsScriptFrame');
+        if (fr && !fr.getAttribute('src')) fr.setAttribute('src', fr.dataset.src);
+      }
+
+      // Sinkronkan route: #/apps-script untuk halaman Apps Script
+      const wantHash = viewId === 'view-apps-script' ? '#/apps-script' : '';
+      if (location.hash !== wantHash && (wantHash || location.hash === '#/apps-script')) {
+        history.replaceState(null, '', wantHash || (location.pathname + location.search));
+      }
+
+      if (viewId === 'view-dashboard') Object.values(charts).forEach(c => c && c.resize());
+    }
+
+    // Routing: buka halaman Apps Script bila URL berupa #/apps-script atau /apps-script
+    function routeFromLocation() {
+      const isAppsScript = location.hash === '#/apps-script' || /\/apps-script\/?$/.test(location.pathname);
+      switchView(isAppsScript ? 'view-apps-script' : 'view-dashboard');
+    }
+    window.addEventListener('hashchange', routeFromLocation);
+
+    // =====================================================================
+    // PALET: navy solid + amber (header & aksen kuning-hitam tetap dari logo ESDM)
+    // =====================================================================
+    const PAL = {
+      ink: '#0F172A', text: '#334155', muted: '#64748B', grid: '#F1F5F9', track: '#E2E8F0',
+      navy: '#1E3A8A', navyLight: '#2563EB',
+      amber: '#F59E0B', amberLight: '#FBBF24', amberDark: '#D97706',
+      blue: '#0284C7', blueLight: '#38BDF8',
+      coral: '#E11D48', coralLight: '#FB7185',
+      slate: '#CBD5E1', slateDark: '#94A3B8'
+    };
+    const FONT = "'Plus Jakarta Sans', sans-serif";
+    if (window.Chart) {
+      Chart.defaults.font.family = FONT;
+      Chart.defaults.color = PAL.muted;
+    }
+
+    function esc(s) {
+      return String(s == null ? '' : s).replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
+    }
+
+    function efekClass(v) {
+      v = v || '';
+      if (v.includes('Cukup')) return 'cukup';
+      if (v.includes('Efektif')) return 'efektif';
+      if (v.includes('Kelemahan')) return 'kelemahan';
+      return 'belum';
+    }
+
+    const fmtPct = (a, b) => b > 0 ? Math.round((a / b) * 1000) / 10 : 0;
+    const fmtId = n => String(n).replace('.', ',');
+    const shortUnit = u => u === 'Sekretariat Inspektorat Jenderal' ? 'Sekretariat Itjen (SIJ)' : u;
+    const isDone = r => r.status_pengendalian === 'Sudah Dilakukan';
+
+    // Status per titik mitigasi (risiko x PIC): lengkap / progress / belum
+    //   lengkap  = semua rencana tindak di titik itu terealisasi
+    //   progress = sebagian terealisasi
+    //   belum    = belum ada yang terealisasi
+    let titikStatusMap = {};
+    const STATUS_LABEL = { lengkap: 'Lengkap', progress: 'On progress', belum: 'Belum sama sekali' };
+    const es2Of = pic => String(pic).includes('SIJ') ? 'Sekretariat Inspektorat Jenderal' : pic;
+    function titikBadge(no, pic) {
+      const st = titikStatusMap[no + '|' + pic] || 'belum';
+      const cfg = {
+        lengkap: ['bg-[#E8EEFB] text-[#1E3A8A] border-[#C7D5F5] font-bold', 'fa-check', 'Lengkap'],
+        progress: ['bg-amber-100 text-amber-800 border-amber-200 font-bold', 'fa-hourglass-half', 'On progress'],
+        belum: ['bg-slate-100 text-slate-600 border-slate-200 font-medium', 'fa-minus', 'Belum']
+      }[st];
+      return `<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] border ${cfg[0]}"><i class="fa-solid ${cfg[1]} text-[9px]"></i> ${cfg[2]}</span>`;
+    }
+
+    // =====================================================================
+    // PERHITUNGAN TUNGGAL: semua KPI, grafik, dan catatan memakai angka dari sini
+    // =====================================================================
+    function computeStats() {
+      const risks = appData.risks || [];
+      const titik = [];
+      risks.forEach(r => Object.entries(r.pic_mitigasi || {}).forEach(([pic, m]) => titik.push({ no: r.no, pic, m })));
+
+      const totalTitik = titik.length;
+      const titikSudah = titik.filter(t => t.m.status === 'Sudah Dilakukan').length;
+
+      const efek = { efektif: 0, cukup: 0, kelemahan: 0, belum: 0 };
+      titik.forEach(t => efek[efekClass(t.m.efektivitas)]++);
+      const efekDinilai = efek.efektif + efek.cukup + efek.kelemahan;
+
+      // Item rencana tindak = baris register yang punya rencana (F) atau realisasi (H)
+      const flat = appData.flat_records || [];
+      const items = flat.filter(r => r.rencana_tindak_pengendalian || r.pengendalian_yang_sudah_dilakukan);
+      const itemSudah = items.filter(isDone).length;
+
+      const byTitik = {};
+      items.forEach(r => { const k = r.no_risiko + '|' + r.pic_mitigasi; (byTitik[k] = byTitik[k] || []).push(r); });
+      const titikSebagian = Object.values(byTitik).filter(rows => {
+        const s = rows.filter(isDone).length;
+        return s > 0 && s < rows.length;
+      }).length;
+
+      // Status tiga tingkat per titik + rekap per unit Eselon II dan per PIC
+      const statusMap = {};
+      const cnt = { lengkap: 0, progress: 0, belum: 0 };
+      const perUnit = {}, perPicTitik = {};
+      titik.forEach(t => {
+        const rows = byTitik[t.no + '|' + t.pic] || [];
+        const st = rows.length && rows.every(isDone) ? 'lengkap' : rows.some(isDone) ? 'progress' : 'belum';
+        statusMap[t.no + '|' + t.pic] = st;
+        cnt[st]++;
+        const u = es2Of(t.pic);
+        (perUnit[u] = perUnit[u] || { lengkap: 0, progress: 0, belum: 0 })[st]++;
+        (perPicTitik[t.pic] = perPicTitik[t.pic] || { lengkap: 0, progress: 0, belum: 0 })[st]++;
+      });
+      titikStatusMap = statusMap;
+      const unitKeys = Object.keys(appData.summary_eselon2 || {}).filter(u => perUnit[u]);
+      Object.keys(perUnit).forEach(u => { if (!unitKeys.includes(u)) unitKeys.push(u); });
+
+      const picOrder = (appData.metadata && Array.isArray(appData.metadata.daftar_semua_pic) && appData.metadata.daftar_semua_pic.length)
+        ? [...appData.metadata.daftar_semua_pic]
+        : [...new Set(flat.map(r => r.pic_mitigasi).filter(Boolean))];
+      const perPic = {};
+      picOrder.forEach(p => { perPic[p] = { total: 0, sudah: 0 }; });
+      items.forEach(r => {
+        const p = r.pic_mitigasi;
+        if (!p) return;
+        if (!perPic[p]) { perPic[p] = { total: 0, sudah: 0 }; picOrder.push(p); }
+        perPic[p].total++;
+        if (isDone(r)) perPic[p].sudah++;
+      });
+
+      // Efektivitas per PIC: dihitung per titik mitigasi (sama dengan donut efektivitas)
+      const perPicEfek = {};
+      titik.forEach(t => {
+        const e = perPicEfek[t.pic] = perPicEfek[t.pic] || { efektif: 0, cukup: 0, kelemahan: 0, belum: 0 };
+        e[efekClass(t.m.efektivitas)]++;
+      });
+      if (!picOrder.length) picOrder.push(...Object.keys(perPicEfek));
+      Object.keys(perPicEfek).forEach(p => { if (!picOrder.includes(p)) picOrder.push(p); });
+
+      return {
+        totalKode: risks.length,
+        totalTitik, titikSudah, titikBelum: totalTitik - titikSudah,
+        efek, efekDinilai,
+        itemTotal: items.length, itemSudah,
+        kosong: flat.filter(r => !r.rencana_tindak_pengendalian && !r.pengendalian_yang_sudah_dilakukan).length,
+        realisasiTanpaRencana: flat.filter(r => !r.rencana_tindak_pengendalian && r.pengendalian_yang_sudah_dilakukan).length,
+        titikSebagian,
+        lengkap: cnt.lengkap, progress: cnt.progress, belumTitik: cnt.belum, perUnit, unitKeys, perPicTitik,
+        picOrder, perPic, perPicEfek
+      };
+    }
+
+    function renderDashboard() {
+      if (!appData) return;
+      const s = computeStats();
+
+      document.getElementById("kpiTotalKode").textContent = s.totalKode;
+      document.getElementById("kpiTotalTitik").textContent = s.totalTitik;
+
+      const pLengkap = fmtPct(s.lengkap, s.totalTitik);
+      document.getElementById("kpiSudah").textContent = `${s.lengkap}/${s.totalTitik}`;
+      document.getElementById("kpiSudahPct").textContent = `${fmtId(pLengkap)}%`;
+      document.getElementById("kpiSudahBar").style.width = `${pLengkap}%`;
+      document.getElementById("kpiRencana").textContent = `${s.progress} on progress · ${s.belumTitik} belum sama sekali`;
+      document.getElementById("kpiRencana2").textContent =
+        `Rencana tindak: ${s.itemSudah} dari ${s.itemTotal} terealisasi (${fmtId(fmtPct(s.itemSudah, s.itemTotal))}%)`;
+
+      const pEfek = fmtPct(s.efekDinilai, s.totalTitik);
+      document.getElementById("kpiEfek").textContent = `${s.efekDinilai}/${s.totalTitik}`;
+      document.getElementById("kpiEfekPct").textContent = `${fmtId(pEfek)}%`;
+      document.getElementById("kpiEfekBar").style.width = `${pEfek}%`;
+      document.getElementById("kpiEfekSub").textContent = `${s.totalTitik - s.efekDinilai} titik belum dinilai`;
+
+      if (appData.metadata && appData.metadata.sumber_data && appData.metadata.sumber_data.startsWith("http")) {
+        const navBtnGS = document.getElementById("navBtnGoogleSheets");
+        if (navBtnGS) navBtnGS.href = appData.metadata.sumber_data;
+      }
+
+      renderHighlights(s);
+      renderCharts(s);
+      renderMatrixTable();
+      renderDetailTable(appData.flat_records);
+    }
+
+    function renderHighlights(s) {
+      const el = document.getElementById("highlightStrip");
+      const units = s.unitKeys.map(u => {
+        const c = s.perUnit[u], tot = c.lengkap + c.progress + c.belum;
+        return {
+          name: shortUnit(u).replace(' (SIJ)', ''), tot, l: c.lengkap, b: c.belum,
+          pl: fmtPct(c.lengkap, tot), pb: fmtPct(c.belum, tot)
+        };
+      }).filter(u => u.tot > 0);
+      if (!units.length) { el.innerHTML = ''; return; }
+
+      const maxPct = Math.max(...units.map(u => u.pl));
+      const best = units.filter(u => u.pl === maxPct);
+      const low = units.filter(u => u.pb > 50).sort((x, y) => y.pb - x.pb);
+
+      const bestHtml = `
+        <div class="hl-pill">
+          <span class="hl-ico" style="background:#E8EEFB;color:#1E3A8A"><i class="fa-solid fa-arrow-trend-up"></i></span>
+          <span>Paling lengkap (${fmtId(maxPct)}% titik lengkap): ${best.map(u => `<b>${esc(u.name)}</b>`).join(', ')}</span>
+        </div>`;
+      const lowHtml = low.length ? `
+        <div class="hl-pill">
+          <span class="hl-ico" style="background:#FFE4E6;color:#BE123C"><i class="fa-solid fa-flag"></i></span>
+          <span>Perlu perhatian (lebih dari separuh titik belum dimulai): ${low.map(u => `<b>${esc(u.name)}</b> ${fmtId(u.pb)}% (${u.b} titik)`).join(', ')}</span>
+        </div>` : `
+        <div class="hl-pill">
+          <span class="hl-ico" style="background:#E8EEFB;color:#1E3A8A"><i class="fa-solid fa-circle-check"></i></span>
+          <span>Tidak ada unit dengan lebih dari separuh titik yang belum dimulai.</span>
+        </div>`;
+      el.innerHTML = bestHtml + lowHtml;
+    }
+
+
+    // =====================================================================
+    // GRAFIK (Chart.js, mengikuti data sinkronisasi langsung)
+    // Tema: navy solid + amber, bar membulat, label persen berwarna di ujung bar
+    // =====================================================================
+    const bgPlugin = {
+      id: 'bgWhite',
+      beforeDraw(chart) {
+        const { ctx, width, height } = chart;
+        ctx.save();
+        ctx.globalCompositeOperation = 'destination-over';
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, width, height);
+        ctx.restore();
+      }
+    };
+
+    const tooltipCfg = {
+      backgroundColor: 'rgba(15,23,42,0.96)',
+      titleColor: '#F8FAFC',
+      titleFont: { size: 12, weight: '700', family: FONT },
+      bodyColor: '#E2E8F0',
+      bodyFont: { size: 11, weight: '500', family: FONT },
+      padding: 12, cornerRadius: 10, boxPadding: 6, usePointStyle: true,
+      borderColor: 'rgba(255,245,0,0.25)', borderWidth: 1
+    };
+
+    // Angka di dalam segmen bar (hanya bila cukup lebar)
+    const insideLabels = {
+      id: 'insideLabels',
+      afterDatasetsDraw(chart) {
+        const { ctx } = chart;
+        ctx.save();
+        ctx.font = `800 11px ${FONT}`;
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        chart.data.datasets.forEach((ds, i) => {
+          if (ds.hideInside || !chart.isDatasetVisible(i)) return;
+          chart.getDatasetMeta(i).data.forEach((bar, idx) => {
+            const v = ds.data[idx];
+            if (!v || Math.abs(bar.x - bar.base) < 30) return;
+            ctx.fillStyle = ds.insideColor || '#fff';
+            ctx.fillText(ds.isPercentage ? `${Math.round(v)}%` : v, (bar.x + bar.base) / 2, bar.y);
+          });
+        });
+        ctx.restore();
+      }
+    };
+
+    // Teks di ujung kanan bar (persentase / rasio)
+    function endLabelPlugin(getText, getColor) {
+      return {
+        id: 'endLabels',
+        afterDatasetsDraw(chart) {
+          const { ctx, scales } = chart;
+          const n = chart.data.labels.length;
+          ctx.save();
+          ctx.font = `800 11px ${FONT}`;
+          ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+          for (let idx = 0; idx < n; idx++) {
+            let total = 0, y = null;
+            chart.data.datasets.forEach((ds, i) => {
+              if (!chart.isDatasetVisible(i)) return;
+              total += ds.data[idx] || 0;
+              y = chart.getDatasetMeta(i).data[idx].y;
+            });
+            if (y === null) continue;
+            ctx.fillStyle = getColor(idx);
+            ctx.fillText(getText(idx), scales.x.getPixelForValue(total) + 10, y);
+          }
+          ctx.restore();
+        }
+      };
+    }
+
+    function buildDatasetLegend(id, chart) {
+      const el = document.getElementById(id);
+      if (!el) return;
+      el.innerHTML = '';
+      chart.data.datasets.forEach((ds, i) => {
+        const total = ds.totalCount !== undefined ? ds.totalCount : ds.data.reduce((a, b) => a + b, 0);
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'legend-chip';
+        btn.innerHTML = `<span class="legend-dot" style="background:${ds.legendColor}"></span><span>${esc(ds.label)}</span><b>${total}</b>`;
+        btn.onclick = () => {
+          chart.setDatasetVisibility(i, !chart.isDatasetVisible(i));
+          btn.classList.toggle('is-off', !chart.isDatasetVisible(i));
+          chart.update();
+        };
+        el.appendChild(btn);
+      });
+    }
+
+    function buildStaticLegend(id, items) {
+      const el = document.getElementById(id);
+      if (!el) return;
+      el.innerHTML = items.map(it =>
+        `<span class="legend-chip is-static"><span class="legend-dot" style="background:${it.color}"></span><span>${esc(it.label)}</span></span>`).join('');
+    }
+
+    function downloadChart(key, name) {
+      const c = charts[key];
+      if (!c) return;
+      const a = document.createElement('a');
+      a.href = c.toBase64Image('image/png', 1);
+      a.download = `${name}_${new Date().toISOString().slice(0, 10)}.png`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    }
+
+    function renderCharts(s) {
+      Object.keys(charts).forEach(k => charts[k] && charts[k].destroy());
+      charts = {};
+
+      const axisFont = { size: 11, weight: '700', family: FONT };
+      const gridCfg = { color: PAL.grid, drawBorder: false };
+      const tickFont = { size: 10, weight: '600', family: FONT };
+      const hover = (e, els) => { e.native.target.style.cursor = els.length ? 'pointer' : 'default'; };
+      const yAxis = { stacked: true, grid: { display: false }, border: { display: false }, ticks: { font: axisFont, color: PAL.text } };
+      const xCount = { stacked: true, beginAtZero: true, grid: gridCfg, border: { display: false }, ticks: { precision: 0, font: tickFont, color: PAL.muted } };
+      const xPct = {
+        stacked: true, beginAtZero: true, min: 0, max: 100, grid: gridCfg, border: { display: false },
+        ticks: { callback: v => v + '%', stepSize: 20, font: tickFont, color: PAL.muted }
+      };
+      const first = { topLeft: 10, bottomLeft: 10, topRight: 2, bottomRight: 2 };
+      const last = { topLeft: 2, bottomLeft: 2, topRight: 10, bottomRight: 10 };
+      const bar = (th, radius) => ({ borderRadius: radius, borderSkipped: false, borderColor: '#fff', borderWidth: 2.5, barThickness: th });
+      const rag = v => v >= 80 ? PAL.navy : v >= 50 ? PAL.amber : PAL.coral;
+      const ragText = v => v >= 80 ? PAL.navy : v >= 50 ? PAL.amberDark : PAL.coral;
+
+      // ---------- 1. Status titik mitigasi per unit Eselon II (lengkap / on progress / belum) ----------
+      const unitEl = document.getElementById("chartUnit");
+      if (unitEl) {
+        const keys = s.unitKeys;
+        const lk = keys.map(u => s.perUnit[u].lengkap);
+        const pg = keys.map(u => s.perUnit[u].progress);
+        const bl = keys.map(u => s.perUnit[u].belum);
+        const tot = keys.map((u, i) => lk[i] + pg[i] + bl[i]);
+        const pct = keys.map((u, i) => fmtPct(lk[i], tot[i]));
+        // sudut membulat hanya di ujung kiri segmen pertama dan ujung kanan segmen terakhir yang bernilai
+        const seg = di => ctx => {
+          const i = ctx.dataIndex, v = ctx.chart.data.datasets.map(d => d.data[i] || 0);
+          const f = v.findIndex(x => x > 0), l = v.length - 1 - [...v].reverse().findIndex(x => x > 0);
+          const L = di === f ? 10 : 2, R = di === l ? 10 : 2;
+          return { topLeft: L, bottomLeft: L, topRight: R, bottomRight: R };
+        };
+
+        charts.unit = new Chart(unitEl.getContext("2d"), {
+          type: 'bar',
+          plugins: [bgPlugin, insideLabels, endLabelPlugin(idx => `${fmtId(pct[idx])}%`, idx => ragText(pct[idx]))],
+          data: {
+            labels: keys.map(shortUnit),
+            datasets: [
+              { label: 'Lengkap', data: lk, legendColor: PAL.navy, backgroundColor: PAL.navy, hoverBackgroundColor: PAL.navyLight, insideColor: '#fff', ...bar(34, seg(0)) },
+              { label: 'On progress', data: pg, legendColor: PAL.amber, backgroundColor: PAL.amber, hoverBackgroundColor: PAL.amberLight, insideColor: '#fff', ...bar(34, seg(1)) },
+              { label: 'Belum sama sekali', data: bl, legendColor: PAL.slate, backgroundColor: PAL.slate, hoverBackgroundColor: PAL.slateDark, insideColor: PAL.text, ...bar(34, seg(2)) }
+            ]
+          },
+          options: {
+            indexAxis: 'y', responsive: true, maintainAspectRatio: false,
+            layout: { padding: { right: 48 } },
+            onClick: (e, els) => {
+              if (els && els.length) filterByIrat(keys[els[0].index] === 'Sekretariat Inspektorat Jenderal' ? 'SIJ' : keys[els[0].index]);
+            },
+            onHover: hover,
+            plugins: {
+              legend: { display: false },
+              tooltip: {
+                ...tooltipCfg,
+                callbacks: {
+                  afterBody: ctx => {
+                    const i = ctx[0].dataIndex;
+                    const lines = [`Lengkap: ${fmtId(pct[i])}% dari ${tot[i]} titik`];
+                    if (keys[i] === 'Sekretariat Inspektorat Jenderal') {
+                      Object.entries(s.perPicTitik).filter(([k]) => k.includes('SIJ'))
+                        .forEach(([k, v]) => lines.push(`${k}: ${v.lengkap} lengkap, ${v.progress} on progress, ${v.belum} belum`));
+                    }
+                    return lines;
+                  }
+                }
+              }
+            },
+            scales: { x: xCount, y: yAxis }
+          }
+        });
+        buildDatasetLegend('legendUnit', charts.unit);
+      }
+
+      // ---------- 2. Efektivitas total (donut) ----------
+      const efekEl = document.getElementById("chartEfek");
+      if (efekEl) {
+        const names = ['Efektif', 'Cukup Efektif', 'Kelemahan Material', 'Belum dinilai'];
+        const vals = [s.efek.efektif, s.efek.cukup, s.efek.kelemahan, s.efek.belum];
+        const cols = [PAL.navy, PAL.blue, PAL.coral, PAL.slate];
+        const hoverCols = [PAL.navyLight, PAL.blueLight, PAL.coralLight, PAL.slateDark];
+
+        const centerPlugin = {
+          id: 'centerKPI',
+          afterDraw(chart) {
+            const { ctx, chartArea: a } = chart;
+            const cx = (a.left + a.right) / 2, cy = (a.top + a.bottom) / 2;
+            ctx.save();
+            ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+            ctx.fillStyle = PAL.ink;
+            ctx.font = `800 28px ${FONT}`;
+            ctx.fillText(`${s.efekDinilai}/${s.totalTitik}`, cx, cy - 7);
+            ctx.fillStyle = PAL.muted;
+            ctx.font = `600 10px ${FONT}`;
+            ctx.fillText('titik sudah dinilai', cx, cy + 15);
+            ctx.restore();
+          }
+        };
+
+        charts.efek = new Chart(efekEl.getContext("2d"), {
+          type: 'doughnut',
+          plugins: [bgPlugin, centerPlugin],
+          data: {
+            labels: names,
+            datasets: [{ data: vals, backgroundColor: cols, hoverBackgroundColor: hoverCols, borderColor: '#fff', borderWidth: 3.5, borderRadius: 8, spacing: 3, hoverOffset: 10 }]
+          },
+          options: {
+            responsive: true, maintainAspectRatio: false, cutout: '72%',
+            plugins: {
+              legend: { display: false },
+              tooltip: {
+                ...tooltipCfg,
+                callbacks: { label: c => ` ${c.label}: ${c.parsed} titik (${fmtId(fmtPct(c.parsed, s.totalTitik))}%)` }
+              }
+            }
+          }
+        });
+
+        const list = document.getElementById('legendEfek');
+        list.innerHTML = '';
+        names.forEach((n, i) => {
+          const item = document.createElement('div');
+          item.className = 'legend-item';
+          item.innerHTML = `<span class="legend-dot" style="background:${cols[i]}"></span><span class="name">${esc(n)}</span><span class="num">${vals[i]}</span><span class="pct">${fmtId(fmtPct(vals[i], s.totalTitik))}%</span>`;
+          item.onclick = () => {
+            charts.efek.toggleDataVisibility(i);
+            item.classList.toggle('is-off', !charts.efek.getDataVisibility(i));
+            charts.efek.update();
+          };
+          list.appendChild(item);
+        });
+      }
+
+      // ---------- 3. Realisasi rencana tindak per PIC (0-100%) ----------
+      const renEl = document.getElementById("chartRencana");
+      if (renEl) {
+        const pics = s.picOrder;
+        const tot = pics.map(p => s.perPic[p].total);
+        const sud = pics.map(p => s.perPic[p].sudah);
+        const sisa = pics.map((p, i) => tot[i] - sud[i]);
+        const pct = pics.map((p, i) => fmtPct(sud[i], tot[i]));
+        const pctSisa = pics.map((p, i) => tot[i] > 0 ? Math.max(0, Math.round((100 - pct[i]) * 10) / 10) : 0);
+
+        charts.rencana = new Chart(renEl.getContext("2d"), {
+          type: 'bar',
+          plugins: [bgPlugin, insideLabels, endLabelPlugin(idx => `${sud[idx]}/${tot[idx]}`, idx => ragText(pct[idx]))],
+          data: {
+            labels: pics,
+            datasets: [
+              {
+                label: 'Terealisasi', data: pct, isPercentage: true, totalCount: sud.reduce((a, b) => a + b, 0), legendColor: PAL.navy,
+                backgroundColor: ctx => rag(pct[ctx.dataIndex]), insideColor: '#fff', ...bar(26, first)
+              },
+              {
+                label: 'Belum terealisasi', data: pctSisa, isPercentage: true, totalCount: sisa.reduce((a, b) => a + b, 0), legendColor: PAL.track,
+                backgroundColor: PAL.track, hoverBackgroundColor: PAL.slate, insideColor: PAL.muted, ...bar(26, last)
+              }
+            ]
+          },
+          options: {
+            indexAxis: 'y', responsive: true, maintainAspectRatio: false,
+            layout: { padding: { right: 40 } },
+            onClick: (e, els) => { if (els && els.length) filterByIrat(pics[els[0].index]); },
+            onHover: hover,
+            plugins: {
+              legend: { display: false },
+              tooltip: {
+                ...tooltipCfg,
+                callbacks: {
+                  label: c => {
+                    const i = c.dataIndex;
+                    return c.datasetIndex === 0
+                      ? ` Terealisasi: ${sud[i]}/${tot[i]} rencana (${fmtId(pct[i])}%)`
+                      : ` Belum terealisasi: ${sisa[i]}/${tot[i]} rencana (${fmtId(pctSisa[i])}%)`;
+                  }
+                }
+              }
+            },
+            scales: { x: xPct, y: yAxis }
+          }
+        });
+        buildStaticLegend('legendRencana', [
+          { color: PAL.navy, label: '80% atau lebih' },
+          { color: PAL.amber, label: '50 sampai 79%' },
+          { color: PAL.coral, label: 'Di bawah 50%' },
+          { color: PAL.track, label: 'Belum terealisasi' }
+        ]);
+      }
+
+      // ---------- 4. Efektivitas per PIC (0-100%) ----------
+      const epEl = document.getElementById("chartEfekPic");
+      if (epEl) {
+        const pics = s.picOrder;
+        const get = k => pics.map(p => (s.perPicEfek[p] || {})[k] || 0);
+        const dEf = get('efektif'), dCu = get('cukup'), dKe = get('kelemahan'), dBe = get('belum');
+        const tot = pics.map((p, i) => dEf[i] + dCu[i] + dKe[i] + dBe[i]);
+        const dinilai = pics.map((p, i) => dEf[i] + dCu[i] + dKe[i]);
+        const P = arr => arr.map((v, i) => tot[i] > 0 ? fmtPct(v, tot[i]) : 0);
+        const pEf = P(dEf), pCu = P(dCu), pKe = P(dKe);
+        const pBe = pics.map((p, i) => dBe[i] > 0 ? Math.max(0, Math.round((100 - pEf[i] - pCu[i] - pKe[i]) * 10) / 10) : 0);
+        const sum = a => a.reduce((x, y) => x + y, 0);
+        const mk = (label, data, raw, color, hov, radius, extra = {}) =>
+          ({ label, data, rawCount: raw, totalCount: sum(raw), isPercentage: true, legendColor: color, backgroundColor: color, hoverBackgroundColor: hov, ...bar(22, radius), ...extra });
+
+        charts.efekPic = new Chart(epEl.getContext("2d"), {
+          type: 'bar',
+          plugins: [bgPlugin, insideLabels, endLabelPlugin(idx => `${dinilai[idx]}/${tot[idx]}`, idx => PAL.text)],
+          data: {
+            labels: pics,
+            datasets: [
+              mk('Efektif', pEf, dEf, PAL.navy, PAL.navyLight, first),
+              mk('Cukup Efektif', pCu, dCu, PAL.blue, PAL.blueLight, 0),
+              mk('Kelemahan Material', pKe, dKe, PAL.coral, PAL.coralLight, 0),
+              mk('Belum dinilai', pBe, dBe, PAL.slate, PAL.slateDark, last, { insideColor: PAL.muted })
+            ]
+          },
+          options: {
+            indexAxis: 'y', responsive: true, maintainAspectRatio: false,
+            layout: { padding: { right: 40 } },
+            onClick: (e, els) => { if (els && els.length) filterByIrat(pics[els[0].index]); },
+            onHover: hover,
+            plugins: {
+              legend: { display: false },
+              tooltip: {
+                ...tooltipCfg,
+                callbacks: {
+                  label: c => {
+                    const i = c.dataIndex, ds = c.chart.data.datasets[c.datasetIndex];
+                    return ` ${ds.label}: ${ds.rawCount[i]}/${tot[i]} titik (${fmtId(ds.data[i])}%)`;
+                  },
+                  afterBody: c => `Sudah dinilai: ${dinilai[c[0].dataIndex]} dari ${tot[c[0].dataIndex]} titik`
+                }
+              }
+            },
+            scales: { x: xPct, y: yAxis }
+          }
+        });
+        buildDatasetLegend('legendEfekPic', charts.efekPic);
+      }
+    }
+
+    function filterByIrat(picName) {
+      switchView('view-register');
+      document.getElementById("filterPic").value = picName;
+      document.getElementById("filterStatus").value = "ALL";
+      document.getElementById("filterEfek").value = "ALL";
+      document.getElementById("searchInput").value = "";
+      applyFilters();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function renderMatrixTable() {
+      const tbody = document.getElementById("matrixTableBody");
+      tbody.innerHTML = "";
+
+      // Tampilkan seluruh baris risiko secara dinamis sesuai isi data sheet
+      const allRisks = appData.risks || [];
+      const irats = ['Inspektorat I', 'Inspektorat II', 'Inspektorat III', 'Inspektorat IV', 'Inspektorat V'];
+
+      allRisks.forEach((r, idx) => {
+        const tr = document.createElement("tr");
+        tr.className = "hover:bg-slate-50 transition border-b border-slate-100";
+
+        let cellsHTML = `
+          <td class="py-3 px-3 text-center font-bold text-slate-700">${esc(r.no)}</td>
+          <td class="py-3 px-3 font-mono text-[11px] font-semibold text-amber-900">${esc(r.kode_risiko)}</td>
+          <td class="py-3 px-3">
+            <div class="font-medium text-slate-800 line-clamp-2" title="${esc(r.uraian_risiko)}">${esc(r.uraian_risiko)}</div>
+          </td>
+        `;
+
+        // Kolom Inspektorat I s.d. V
+        irats.forEach(pic => {
+          const mit = (r.pic_mitigasi && r.pic_mitigasi[pic]) ? r.pic_mitigasi[pic] : null;
+
+          if (mit) {
+            const badge = titikBadge(r.no, pic);
+
+            const efekTag = (mit.efektivitas && mit.efektivitas !== '-')
+              ? `<span class="block text-[9px] mt-1 font-semibold text-blue-700 bg-blue-50 px-1 py-0.2 rounded">${esc(mit.efektivitas)}</span>`
+              : '';
+
+            const previewText = (mit.pengendalian_dilakukan)
+              ? `<span class="block text-[10px] text-slate-500 mt-1 line-clamp-1 italic">${esc(mit.pengendalian_dilakukan)}</span>`
+              : '';
+
+            cellsHTML += `
+              <td onclick="openDetailModal('${r.no}', '${pic}')" class="py-2 px-2 text-center cursor-pointer hover:bg-amber-50/50 transition">
+                <div class="p-1 rounded-lg border border-transparent hover:border-amber-200">
+                  ${badge}
+                  ${efekTag}
+                  ${previewText}
+                </div>
+              </td>
+            `;
+          } else {
+            // Bukan PIC untuk risiko ini (misal R7 bukan Irat I-IV, atau R17-R24 bukan Irat)
+            cellsHTML += `
+              <td class="py-2 px-2 text-center text-slate-300">
+                <span class="text-xs font-mono">-</span>
+              </td>
+            `;
+          }
+        });
+
+        // Kolom Sekretariat Itjen (SIJ)
+        const sijKeys = (r.pic_mitigasi) ? Object.keys(r.pic_mitigasi).filter(k => k.includes("SIJ") || (r.pic_mitigasi[k] && r.pic_mitigasi[k].kategori_eselon2 === "Sekretariat Inspektorat Jenderal")) : [];
+        if (sijKeys.length > 0) {
+          let sijContent = sijKeys.map(sPic => {
+            const mit = r.pic_mitigasi[sPic];
+            const subLabel = sPic.replace('SIJ (', '').replace(')', '');
+            const badge = titikBadge(r.no, sPic);
+
+            const efekTag = (mit.efektivitas && mit.efektivitas !== '-')
+              ? `<span class="block text-[9px] mt-1 font-semibold text-blue-700 bg-blue-50 px-1 py-0.2 rounded">${esc(mit.efektivitas)}</span>`
+              : '';
+
+            const previewText = (mit.pengendalian_dilakukan)
+              ? `<span class="block text-[10px] text-slate-500 mt-1 line-clamp-1 italic">${esc(mit.pengendalian_dilakukan)}</span>`
+              : '';
+
+            return `
+              <div onclick="openDetailModal('${r.no}', '${sPic}')" class="p-1 rounded-lg border border-transparent hover:border-amber-300 hover:bg-amber-50/50 cursor-pointer transition mb-1">
+                <span class="inline-block text-[9px] font-bold bg-slate-200 text-slate-700 px-1.5 py-0.5 rounded mb-1">${subLabel}</span>
+                ${badge}
+                ${efekTag}
+                ${previewText}
+              </div>
+            `;
+          }).join('');
+
+          cellsHTML += `
+            <td class="py-2 px-2 text-center bg-amber-50/20">
+              ${sijContent}
+            </td>
+          `;
+        } else {
+          cellsHTML += `
+            <td class="py-2 px-2 text-center text-slate-300 bg-amber-50/10">
+              <span class="text-xs font-mono">-</span>
+            </td>
+          `;
+        }
+
+        tr.innerHTML = cellsHTML;
+        tbody.appendChild(tr);
+      });
+    }
+
+    function renderDetailTable(records) {
+      const tbody = document.getElementById("detailTableBody");
+      tbody.innerHTML = "";
+
+      if (records.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="7" class="p-6 text-center text-slate-400">Tidak ada data yang cocok dengan kriteria pencarian / filter.</td></tr>`;
+        document.getElementById("tableCountInfo").textContent = "Menampilkan 0 baris data";
+        return;
+      }
+
+      document.getElementById("tableCountInfo").textContent = `Menampilkan ${records.length} baris data pengendalian`;
+
+      records.forEach((row, idx) => {
+        const tr = document.createElement("tr");
+        tr.className = "hover:bg-amber-50/40 transition cursor-pointer group";
+        tr.title = "Klik baris ini untuk melihat detail lengkap kendala dan link data dukung";
+        tr.onclick = () => {
+          openDetailModalDirect(row);
+        };
+
+        const isSudah = row.status_pengendalian === "Sudah Dilakukan";
+        const statusBadge = isSudah
+          ? `<span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200 whitespace-nowrap">
+              <i class="fa-solid fa-circle-check text-[9px]"></i> Sudah Dilakukan
+             </span>`
+          : `<span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-medium bg-rose-50 text-rose-700 border border-rose-200 whitespace-nowrap">
+              <i class="fa-solid fa-circle-xmark text-[9px]"></i> Belum Dilakukan
+             </span>`;
+
+        const textUraian = row.uraian_risiko
+          ? `<div class="text-slate-800 font-medium text-xs leading-relaxed">${esc(row.uraian_risiko)}</div>`
+          : `<span class="text-slate-400 italic">-</span>`;
+
+        const textF = row.rencana_tindak_pengendalian
+          ? `<div class="text-slate-800 font-normal leading-relaxed text-xs">${esc(row.rencana_tindak_pengendalian)}</div>`
+          : `<span class="text-slate-400 italic">-</span>`;
+
+        const textH = row.pengendalian_yang_sudah_dilakukan
+          ? `<div class="text-slate-700 font-normal leading-relaxed text-xs">${esc(row.pengendalian_yang_sudah_dilakukan)}</div>`
+          : `<span class="text-slate-400 italic">Belum ada pengisian pengendalian</span>`;
+
+        tr.innerHTML = `
+          <td class="py-3 px-3 text-center font-bold text-slate-700 align-top">${esc(row.no_risiko)}</td>
+          <td class="py-3 px-3 font-mono text-[11px] font-semibold text-slate-900 align-top whitespace-nowrap">${esc(row.kode_risiko)}</td>
+          <td class="py-3 px-3 align-top">${textUraian}</td>
+          <td class="py-3 px-3 align-top">
+            <span class="inline-block px-2.5 py-1 rounded bg-slate-100 group-hover:bg-[#FFF500]/25 text-slate-800 font-semibold text-[11px] whitespace-nowrap border border-slate-200 transition">
+              ${esc(row.pic_mitigasi)}
+            </span>
+          </td>
+          <td class="py-3 px-3 align-top">${textF}</td>
+          <td class="py-3 px-3 align-top">${textH}</td>
+          <td class="py-3 px-3 text-center align-top">${statusBadge}</td>
+        `;
+
+        tbody.appendChild(tr);
+      });
+    }
+
+    function applyFilters() {
+      const search = document.getElementById("searchInput").value.toLowerCase();
+      const pic = document.getElementById("filterPic").value;
+      const status = document.getElementById("filterStatus").value;
+      const efek = document.getElementById("filterEfek").value;
+
+      const filtered = appData.flat_records.filter(r => {
+        const matchSearch = (r.kode_risiko || "").toLowerCase().includes(search) ||
+          (r.uraian_risiko || "").toLowerCase().includes(search) ||
+          (r.pic_mitigasi || "").toLowerCase().includes(search) ||
+          (r.kategori_eselon2 || "").toLowerCase().includes(search) ||
+          (r.rencana_tindak_pengendalian || "").toLowerCase().includes(search) ||
+          (r.pengendalian_yang_sudah_dilakukan || "").toLowerCase().includes(search);
+
+        const matchPic = pic === "ALL" ||
+          (pic === "SIJ" ? (r.pic_mitigasi.includes("SIJ") || r.kategori_eselon2 === "Sekretariat Inspektorat Jenderal") : r.pic_mitigasi === pic);
+
+        const matchStatus = status === "ALL" || r.status_pengendalian === status;
+        const matchEfek = efek === "ALL" ||
+          (efek === "-" && (r.efektivitas_pengendalian === "-" || !r.efektivitas_pengendalian)) ||
+          (r.efektivitas_pengendalian || "").includes(efek);
+
+        return matchSearch && matchPic && matchStatus && matchEfek;
+      });
+
+      renderDetailTable(filtered);
+    }
+
+    function resetFilters() {
+      document.getElementById("searchInput").value = "";
+      document.getElementById("filterPic").value = "ALL";
+      document.getElementById("filterStatus").value = "ALL";
+      document.getElementById("filterEfek").value = "ALL";
+      renderDetailTable(appData.flat_records);
+    }
+
+    function openDetailModal(riskNo, picName) {
+      const risk = appData.risks.find(r => r.no === riskNo);
+      if (!risk) return;
+
+      const mit = (risk.pic_mitigasi && risk.pic_mitigasi[picName]) ? risk.pic_mitigasi[picName] : {
+        pic: picName,
+        kategori_eselon2: picName.includes("SIJ") ? "Sekretariat Inspektorat Jenderal" : picName,
+        status: "Belum Dilakukan",
+        pengendalian_dilakukan: "",
+        efektivitas: "-",
+        link_dukung: "",
+        kendala: ""
+      };
+
+      const record = {
+        no_risiko: risk.no,
+        kode_risiko: risk.kode_risiko,
+        uraian_risiko: risk.uraian_risiko,
+        pic_mitigasi: picName,
+        kategori_eselon2: mit.kategori_eselon2 || (picName.includes("SIJ") ? "Sekretariat Inspektorat Jenderal" : picName),
+        status_pengendalian: mit.status,
+        status_titik: titikStatusMap[riskNo + '|' + picName] || 'belum',
+        rencana_tindak_pengendalian: mit.rencana_tindak_pengendalian || "",
+        pengendalian_yang_sudah_dilakukan: mit.pengendalian_dilakukan,
+        efektivitas_pengendalian: mit.efektivitas,
+        link_dukung: mit.link_dukung,
+        kendala: mit.kendala || risk.kendala_global || ""
+      };
+
+      openDetailModalDirect(record);
+    }
+
+    function openDetailModalDirect(record) {
+      document.getElementById("modalRiskNo").textContent = record.no_risiko;
+      document.getElementById("modalKodeRisiko").textContent = record.kode_risiko;
+      document.getElementById("modalPicName").textContent = `PIC Mitigasi: ${record.pic_mitigasi}`;
+      document.getElementById("modalUraianRisiko").textContent = record.uraian_risiko;
+
+      const statusBadge = document.getElementById("modalStatusBadge");
+      if (record.status_titik) {
+        // klik dari matriks: status tingkat titik mitigasi
+        const st = record.status_titik;
+        statusBadge.textContent = STATUS_LABEL[st];
+        statusBadge.className = "inline-block mt-0.5 px-2.5 py-1 rounded-md text-xs font-bold border " +
+          (st === 'lengkap' ? "bg-[#E8EEFB] text-[#1E3A8A] border-[#C7D5F5]" : st === 'progress' ? "bg-amber-100 text-amber-800 border-amber-200" : "bg-slate-100 text-slate-700 border-slate-200");
+      } else if (record.status_pengendalian === "Sudah Dilakukan") {
+        statusBadge.textContent = "Sudah Dilakukan";
+        statusBadge.className = "inline-block mt-0.5 px-2.5 py-1 rounded-md text-xs font-bold bg-emerald-100 text-emerald-800 border border-emerald-200";
+      } else {
+        statusBadge.textContent = "Belum Dilakukan";
+        statusBadge.className = "inline-block mt-0.5 px-2.5 py-1 rounded-md text-xs font-bold bg-rose-100 text-rose-800 border border-rose-200";
+      }
+
+      document.getElementById("modalEfektivitasBadge").textContent = record.efektivitas_pengendalian || "-";
+
+      const textRencana = record.rencana_tindak_pengendalian || "Belum ada rencana tindak pengendalian (Kolom F).";
+      document.getElementById("modalRencanaText").textContent = textRencana;
+
+      const textPengendalian = record.pengendalian_yang_sudah_dilakukan || "Belum ada catatan pelaksanaan pengendalian.";
+      document.getElementById("modalPengendalianText").textContent = textPengendalian;
+
+      // Kendala
+      const kendalaEl = document.getElementById("modalKendalaText");
+      if (record.kendala) {
+        kendalaEl.textContent = record.kendala;
+        document.getElementById("modalKendalaContainer").classList.remove("hidden");
+      } else {
+        document.getElementById("modalKendalaContainer").classList.add("hidden");
+      }
+
+      // Link Dukung
+      const linkContainer = document.getElementById("modalLinkContainer");
+      const linkText = document.getElementById("modalLinkText");
+      if (record.link_dukung) {
+        const safeHref = /^https?:\/\//i.test(record.link_dukung) ? record.link_dukung : '#';
+        linkText.innerHTML = `<a href="${esc(safeHref)}" target="_blank" rel="noopener noreferrer" class="text-amber-700 hover:text-amber-900 font-semibold underline flex items-center gap-1.5"><i class="fa-solid fa-arrow-up-right-from-square"></i> Buka Link Bukti / Data Dukung</a>`;
+        linkContainer.classList.remove("hidden");
+      } else {
+        linkContainer.classList.add("hidden");
+      }
+
+      document.getElementById("detailModal").classList.remove("hidden");
+    }
+
+    function closeModal() {
+      document.getElementById("detailModal").classList.add("hidden");
+    }
+
+    function downloadCSV() {
+      if (!appData || !appData.flat_records || appData.flat_records.length === 0) {
+        window.location.href = "monitoring_pengendalian_inspektorat.csv";
+        return;
+      }
+
+      const headers = [
+        "No Risiko", "Kode Risiko", "Uraian Risiko", "PIC Mitigasi",
+        "Kategori Eselon II", "Status Pengendalian",
+        "Rencana Tindak Pengendalian", "Pengendalian Yang Sudah Dilakukan",
+        "Efektivitas Pengendalian", "Link Data Dukung", "Kendala / Hambatan"
+      ];
+
+      const keys = [
+        "no_risiko", "kode_risiko", "uraian_risiko", "pic_mitigasi",
+        "kategori_eselon2", "status_pengendalian",
+        "rencana_tindak_pengendalian", "pengendalian_yang_sudah_dilakukan",
+        "efektivitas_pengendalian", "link_dukung", "kendala"
+      ];
+
+      const csvLines = [headers.join(",")];
+      appData.flat_records.forEach(r => {
+        const line = keys.map(k => {
+          let val = (r[k] || "").toString().replace(/"/g, '""');
+          return `"${val}"`;
+        });
+        csvLines.push(line.join(","));
+      });
+
+      const blob = new Blob(["\uFEFF" + csvLines.join("\r\n")], { type: "text/csv;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `monitoring_pengendalian_itjen_live_${new Date().toISOString().slice(0, 10)}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }
+
+  </script>
+</body>
+
+</html>
